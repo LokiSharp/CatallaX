@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Full gate before push: lint, format check, typecheck, tests.
+set -euo pipefail
+
+if [[ "${CATALLAX_SKIP_HOOKS:-}" == "1" ]]; then
+  echo "[pre-push] skipped (CATALLAX_SKIP_HOOKS=1)"
+  exit 0
+fi
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+if ! command -v devbox >/dev/null 2>&1; then
+  echo "[FAIL] devbox is required for git hooks (or set CATALLAX_SKIP_HOOKS=1)" >&2
+  exit 1
+fi
+
+echo "[pre-push] full check (lint + format + typecheck + test)"
+devbox run check

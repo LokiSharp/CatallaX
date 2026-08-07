@@ -20,3 +20,9 @@ Core rules:
 14. Database schema changes must use Alembic migrations.
 15. Critical database behavior must eventually have PostgreSQL integration tests.
 16. Do not implement future milestones unless explicitly requested.
+17. Git hooks live in `.githooks/` (`core.hooksPath`, configured by `devbox run setup`):
+    - `commit-msg`: Conventional Commits subjects (`feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`).
+    - `pre-commit`: `devbox run precommit` (ruff check + format --check + pyright).
+    - `pre-push`: `devbox run check` (precommit + pytest).
+    Do not use `--no-verify` / `CATALLAX_SKIP_HOOKS=1` unless explicitly necessary.
+18. GitHub Actions CI (`.github/workflows/ci.yml`) must stay aligned with local gates: Devbox install, `uv sync`, then ruff / format / pyright / pytest.

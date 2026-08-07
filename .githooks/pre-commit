@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Fast quality gate before creating a commit: lint, format check, typecheck.
+set -euo pipefail
+
+if [[ "${CATALLAX_SKIP_HOOKS:-}" == "1" ]]; then
+  echo "[pre-commit] skipped (CATALLAX_SKIP_HOOKS=1)"
+  exit 0
+fi
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+if ! command -v devbox >/dev/null 2>&1; then
+  echo "[FAIL] devbox is required for git hooks (or set CATALLAX_SKIP_HOOKS=1)" >&2
+  exit 1
+fi
+
+echo "[pre-commit] ruff check + format --check + pyright"
+devbox run precommit

@@ -19,7 +19,14 @@
     "scripts": {
       "setup": [
         "uv sync",
-        "if [ ! -f .env ]; then cp .env.example .env && echo 'Created .env from .env.example'; else echo '.env already present'; fi"
+        "if [ ! -f .env ]; then cp .env.example .env && echo 'Created .env from .env.example'; else echo '.env already present'; fi",
+        "git config core.hooksPath .githooks",
+        "echo 'Configured git hooksPath -> .githooks (commit-msg, pre-commit, pre-push)'"
+      ],
+      "precommit": [
+        "ruff check .",
+        "ruff format --check .",
+        "pyright"
       ],
       "db-start": [
         "bash scripts/db-start.sh"
