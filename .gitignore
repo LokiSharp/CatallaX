@@ -1,0 +1,39 @@
+# Environment
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+wheels/
+*.egg
+
+# Test / coverage / tooling
+.pytest_cache/
+.ruff_cache/
+.pyright/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Devbox / local PostgreSQL data (plugin-managed)
+.devbox/
+*.log

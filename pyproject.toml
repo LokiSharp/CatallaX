@@ -1,0 +1,134 @@
+[project]
+name = "catallax"
+version = "0.1.0"
+description = "CatallaX — quantitative research and portfolio platform"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "LokiSharp", email = "loki.sharp@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.19.0",
+    "psycopg[binary]>=3.3.4",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "sqlalchemy>=2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+src = ["src", "tests", "migrations"]
+extend-exclude = [".devbox", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    # Core correctness / style
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "PIE",  # flake8-pie
+    "RUF",  # ruff-specific
+    # Structure / hygiene
+    "RET",  # flake8-return
+    "ARG",  # flake8-unused-arguments
+    "PTH",  # flake8-use-pathlib
+    "ERA",  # eradicate (commented-out code)
+    "T10",  # flake8-debugger
+    "PL",   # pylint subset
+    "TRY",  # tryceratops
+    "PERF", # perflint
+    "FURB", # refurb
+    # Domain-relevant
+    "DTZ",  # flake8-datetimez (timezone-aware times matter for market data)
+    "LOG",  # flake8-logging
+    "G",    # flake8-logging-format
+    # Tests / typing helpers
+    "PT",   # flake8-pytest-style
+    "TC",   # flake8-type-checking
+    "S",    # flake8-bandit (security)
+    # Full annotation enforcement
+    "ANN",  # flake8-annotations — require typed args/returns everywhere
+    # Recommended tight pack
+    "PGH",  # pygrep-hooks — no silent blanket noqa / type: ignore
+    "BLE",  # flake8-blind-except — no bare/blind except
+    "ASYNC",# flake8-async — correct async usage when introduced
+    "FLY",  # flynt — prefer f-strings where clearer
+    "RSE",  # flake8-raise — clean raise statements
+    "ICN",  # flake8-import-conventions — numpy/pandas import aliases
+    "A",    # flake8-builtins — avoid shadowing builtins
+    "SLF",  # flake8-self — discourage external _private access
+    "C90",  # mccabe — complexity ceiling
+]
+
+ignore = [
+    # Conflicts with formatter / noisy without payoff at this stage
+    "PLR0913",  # too many arguments — revisit when designing public APIs
+    "PLR2004",  # magic value comparison — common in tests and small scripts
+    "TRY003",   # long exception messages — prefer clarity over rule
+]
+
+[tool.ruff.lint.per-file-ignores]
+# assert is the point of tests; security rules target production paths.
+# Tests may touch private helpers; production code should not.
+"tests/**" = ["S101", "SLF001"]
+# Alembic revisions are script modules; keep generator noise down
+"migrations/versions/**" = ["ERA001"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.flake8-annotations]
+# Require return annotations even when the body only returns None.
+suppress-none-returning = false
+# Require `-> None` on `__init__` (stricter than mypy default).
+mypy-init-return = true
+# Disallow bare `Any` on *args/**kwargs unless explicitly annotated otherwise.
+allow-star-arg-any = false
+# `_` / `_name` dummy args still need types under full enforcement.
+suppress-dummy-args = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["catallax"]
+force-single-line = false
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pyright]
+include = ["src", "tests", "migrations"]
+exclude = ["**/__pycache__", ".venv", ".devbox"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+# Still strict, but avoid thrashing on third-party packages without stubs
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

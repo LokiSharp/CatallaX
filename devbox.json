@@ -1,0 +1,63 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.2/.schema/devbox.schema.json",
+  "packages": [
+    "uv@latest",
+    "postgresql@latest",
+    "git@latest",
+    "python@3.14",
+    "ruff@latest",
+    "pyright@latest"
+  ],
+  "env": {
+    "UV_LINK_MODE": "copy",
+    "PGPORT": "15432"
+  },
+  "shell": {
+    "init_hook": [
+      "echo 'CatallaX devbox ready (Python + uv + PostgreSQL + Ruff + Pyright).'"
+    ],
+    "scripts": {
+      "setup": [
+        "uv sync",
+        "if [ ! -f .env ]; then cp .env.example .env && echo 'Created .env from .env.example'; else echo '.env already present'; fi"
+      ],
+      "db-start": [
+        "bash scripts/db-start.sh"
+      ],
+      "db-stop": [
+        "bash scripts/db-stop.sh"
+      ],
+      "db-init": [
+        "bash scripts/db-init.sh"
+      ],
+      "db-reset": [
+        "bash scripts/db-reset.sh"
+      ],
+      "db-check": [
+        "bash scripts/db-check.sh"
+      ],
+      "migrate": [
+        "uv run alembic upgrade head"
+      ],
+      "test": [
+        "uv run pytest"
+      ],
+      "lint": [
+        "ruff check ."
+      ],
+      "format": [
+        "ruff format ."
+      ],
+      "typecheck": [
+        "pyright"
+      ],
+      "check": [
+        "ruff check .",
+        "ruff format --check .",
+        "pyright",
+        "uv run pytest"
+      ]
+    }
+  }
+}
+
