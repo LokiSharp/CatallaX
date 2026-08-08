@@ -51,7 +51,7 @@ class MarketDataProvider(Protocol):
     ) -> list[ProviderInstrument]:
         """Return the security master snapshot for the given markets.
 
-        ``markets`` uses CatallaX market codes (``CN``, ``US``). ``None`` means
-        all markets supported by the provider.
+        ``markets`` uses CatallaX market codes (``CN``, ``US``, ``HK``).
+        ``None`` means the provider default set.
         """
         ...

@@ -12,6 +12,7 @@ from catallax.db.repositories.symbol_map import InstrumentSymbolMapRepository
 from catallax.db.repositories.sync_log import DataSyncLogRepository
 from catallax.db.session import get_engine, session_scope
 from catallax.domain.enums import SyncEntity
+from catallax.domain.markets import DEFAULT_MARKETS
 from catallax.providers.factory import build_instrument_provider
 
 if TYPE_CHECKING:
@@ -107,8 +108,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--markets",
-        default="CN,US",
-        help="Comma-separated markets (default: CN,US)",
+        default=",".join(DEFAULT_MARKETS),
+        help=f"Comma-separated markets (default: {','.join(DEFAULT_MARKETS)})",
     )
     parser.add_argument(
         "--provider",

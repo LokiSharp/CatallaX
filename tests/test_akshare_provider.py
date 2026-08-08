@@ -44,12 +44,19 @@ def test_get_instruments_from_injected_frames() -> None:
             "名称": ["苹果", "微软", "伯克希尔B", "伯克希尔A"],
         }
     )
+    hk = pd.DataFrame(
+        {
+            "代码": ["00700", "00941"],
+            "名称": ["腾讯控股", "中国移动"],
+        }
+    )
     provider = AkshareMarketDataProvider(
         fetch_cn=lambda: cn,
         fetch_us=lambda: us,
+        fetch_hk=lambda: hk,
     )
-    rows = provider.get_instruments(markets=["CN", "US"])
-    assert len(rows) == 6
+    rows = provider.get_instruments(markets=["CN", "US", "HK"])
+    assert len(rows) == 8
 
     cn_rows = [r for r in rows if r.market == Market.CN.value]
     assert {r.provider_symbol for r in cn_rows} == {"600519", "000001"}
@@ -67,3 +74,10 @@ def test_get_instruments_from_injected_frames() -> None:
     assert aapl.currency == "USD"
     brk_b = next(r for r in us_rows if r.symbol == "BRK.B")
     assert brk_b.provider_symbol == "BRK.B"
+
+    hk_rows = [r for r in rows if r.market == Market.HK.value]
+    assert {r.symbol for r in hk_rows} == {"700", "941"}
+    tencent = next(r for r in hk_rows if r.symbol == "700")
+    assert tencent.exchange == "SEHK"
+    assert tencent.currency == "HKD"
+    assert tencent.name_cn == "腾讯控股"

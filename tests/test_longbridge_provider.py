@@ -58,11 +58,15 @@ def test_longbridge_provider_from_injected_list() -> None:
             return [
                 SecurityRow("600519.SH", "贵州茅台", "Kweichow Moutai", "SHSE", "CNY"),
             ]
+        if market == "HK":
+            return [
+                SecurityRow("700.HK", "腾讯控股", "TENCENT", "SEHK", "HKD"),
+            ]
         return []
 
     provider = LongbridgeMarketDataProvider(list_fetcher=fetch)
-    rows = provider.get_instruments(markets=["CN", "US"])
-    assert len(rows) == 3
+    rows = provider.get_instruments(markets=["CN", "US", "HK"])
+    assert len(rows) == 4
 
     aapl = next(r for r in rows if r.symbol == "AAPL")
     assert aapl.name_cn == "苹果"
@@ -79,6 +83,14 @@ def test_longbridge_provider_from_injected_list() -> None:
     assert moutai.name_cn == "贵州茅台"
     assert moutai.name_en == "Kweichow Moutai"
     assert moutai.market == Market.CN.value
+
+    tencent = next(r for r in rows if r.symbol == "700")
+    assert tencent.market == Market.HK.value
+    assert tencent.exchange == "SEHK"
+    assert tencent.currency == "HKD"
+    assert tencent.name_cn == "腾讯控股"
+    assert tencent.name_en == "TENCENT"
+    assert tencent.provider_symbol == "700.HK"
 
 
 def test_fallback_uses_secondary_on_primary_failure() -> None:

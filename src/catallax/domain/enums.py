@@ -8,6 +8,7 @@ class Market(StrEnum):
 
     CN = "CN"
     US = "US"
+    HK = "HK"
 
 
 class AssetType(StrEnum):

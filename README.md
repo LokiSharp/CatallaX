@@ -13,6 +13,7 @@ Security Master + `daily_price` schema, plus **instrument list sync** into
 
 - **Default provider:** Longbridge OpenAPI
 - **Fallback:** AKShare (if Longbridge fails or returns empty)
+- **Default markets:** `CN,HK,US`
 - Override with `CATALLAX_MARKET_DATA_PROVIDER=akshare` or `--provider akshare`
 
 Daily price download is **not** implemented yet (Milestone 1.4).
@@ -76,7 +77,7 @@ Toolchain is installed via Devbox so CI matches the local environment.
 | `devbox run db-reset` | Drop + recreate `catallax_dev`, then migrate (local only) |
 | `devbox run db-check` | Smoke-test app → PostgreSQL connectivity |
 | `devbox run migrate` | Run Alembic migrations |
-| `devbox run sync-instruments` | Sync CN/US instruments (Longbridge → AKShare fallback) |
+| `devbox run sync-instruments` | Sync CN/HK/US instruments (Longbridge → AKShare fallback) |
 | `devbox run test` | Run pytest |
 | `devbox run lint` | Ruff check |
 | `devbox run format` | Ruff format |

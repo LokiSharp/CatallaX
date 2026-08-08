@@ -10,6 +10,7 @@ from longbridge.openapi import Config, Market, QuoteContext
 
 from catallax.config import settings
 from catallax.domain.enums import AssetType, InstrumentStatus
+from catallax.domain.markets import DEFAULT_MARKETS
 from catallax.providers.base import ProviderInstrument
 from catallax.providers.longbridge.symbols import (
     currency_for_market,
@@ -60,14 +61,9 @@ class LongbridgeMarketDataProvider:
         *,
         markets: Sequence[str] | None = None,
     ) -> list[ProviderInstrument]:
-        wanted = {m.upper() for m in markets} if markets else {"CN", "US"}
-        lb_markets: list[str] = []
-        if "US" in wanted:
-            lb_markets.append("US")
-        if "CN" in wanted:
-            lb_markets.append("CN")
-        if "HK" in wanted:
-            lb_markets.append("HK")
+        wanted = {m.upper() for m in markets} if markets else set(DEFAULT_MARKETS)
+        # Preserve a stable fetch order.
+        lb_markets = [m for m in ("CN", "HK", "US") if m in wanted]
 
         out: list[ProviderInstrument] = []
         for lb_market in lb_markets:

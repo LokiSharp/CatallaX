@@ -7,8 +7,10 @@ from catallax.domain.enums import (
     SyncEntity,
     SyncStatus,
 )
+from catallax.domain.markets import DEFAULT_MARKETS
 
 __all__ = [
+    "DEFAULT_MARKETS",
     "AssetType",
     "InstrumentStatus",
     "Market",

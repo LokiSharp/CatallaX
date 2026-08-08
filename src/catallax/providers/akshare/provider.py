@@ -11,6 +11,7 @@ import akshare as ak
 import pandas as pd
 
 from catallax.domain.enums import AssetType, InstrumentStatus, Market
+from catallax.domain.markets import DEFAULT_MARKETS
 from catallax.providers.base import ProviderInstrument
 
 logger = logging.getLogger(__name__)
@@ -67,9 +68,11 @@ class AkshareMarketDataProvider:
         *,
         fetch_cn: AkFetch | None = None,
         fetch_us: AkFetch | None = None,
+        fetch_hk: AkFetch | None = None,
     ) -> None:
         self._fetch_cn = fetch_cn
         self._fetch_us = fetch_us
+        self._fetch_hk = fetch_hk
 
     @property
     def name(self) -> str:
@@ -80,13 +83,12 @@ class AkshareMarketDataProvider:
         *,
         markets: Sequence[str] | None = None,
     ) -> list[ProviderInstrument]:
-        if markets:
-            wanted = {m.upper() for m in markets}
-        else:
-            wanted = {Market.CN.value, Market.US.value}
+        wanted = {m.upper() for m in markets} if markets else set(DEFAULT_MARKETS)
         rows: list[ProviderInstrument] = []
         if Market.CN.value in wanted:
             rows.extend(self._get_cn_instruments())
+        if Market.HK.value in wanted:
+            rows.extend(self._get_hk_instruments())
         if Market.US.value in wanted:
             rows.extend(self._get_us_instruments())
         return rows
@@ -121,6 +123,51 @@ class AkshareMarketDataProvider:
                 )
             )
         logger.info("AKShare CN instruments fetched: %s", len(out))
+        return out
+
+    def _get_hk_instruments(self) -> list[ProviderInstrument]:
+        df = self._load_hk_frame()
+        if df.empty:
+            return []
+
+        code_col = _first_col(
+            df,
+            ("代码", "symbol", "code", "证券代码"),
+        )
+        name_col = _first_col(
+            df,
+            ("名称", "name", "证券简称", "中文名称"),
+        )
+        out: list[ProviderInstrument] = []
+        seen: set[str] = set()
+        for record in _as_records(df):
+            raw_code = _cell_str(record[code_col])
+            if not raw_code or raw_code.lower() == "nan":
+                continue
+            # HK codes are often zero-padded (e.g. 00700 → 700 to match Longbridge).
+            code = raw_code.upper()
+            symbol = str(int(code)) if code.isdigit() else code
+            if symbol in seen:
+                continue
+            seen.add(symbol)
+            name_raw = _cell_str(record[name_col]) if name_col else symbol
+            name = clean_name(name_raw) if name_raw.lower() != "nan" else symbol
+            out.append(
+                ProviderInstrument(
+                    provider=PROVIDER_NAME,
+                    provider_symbol=symbol,
+                    provider_exchange="HK",
+                    name_cn=name or symbol,
+                    name_en="",
+                    market=Market.HK.value,
+                    exchange="SEHK",
+                    currency="HKD",
+                    asset_type=AssetType.EQUITY.value,
+                    status=InstrumentStatus.ACTIVE.value,
+                    symbol=symbol,
+                )
+            )
+        logger.info("AKShare HK instruments fetched: %s", len(out))
         return out
 
     def _get_us_instruments(self) -> list[ProviderInstrument]:
@@ -171,6 +218,18 @@ class AkshareMarketDataProvider:
         if self._fetch_cn is not None:
             return self._fetch_cn()
         return ak.stock_info_a_code_name()
+
+    def _load_hk_frame(self) -> pd.DataFrame:
+        if self._fetch_hk is not None:
+            return self._fetch_hk()
+        try:
+            return ak.stock_hk_spot_em()
+        except Exception:
+            logger.warning(
+                "stock_hk_spot_em failed; trying stock_hk_spot",
+                exc_info=True,
+            )
+            return ak.stock_hk_spot()
 
     def _load_us_frame(self) -> pd.DataFrame:
         if self._fetch_us is not None:
