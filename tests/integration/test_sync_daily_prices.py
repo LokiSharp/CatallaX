@@ -139,6 +139,52 @@ def test_sync_daily_prices_upserts_and_records_history(db_session: Session) -> N
     assert log.records_written == 1
 
 
+def test_sync_skips_invalid_ohlc(db_session: Session) -> None:
+    instrument_id = _seed_mapped_instrument(
+        db_session,
+        symbol="AAPL",
+        market=Market.US.value,
+        provider_symbol="AAPL.US",
+    )
+    good = ProviderDailyBar(
+        provider_symbol="AAPL.US",
+        trade_date=date(2024, 1, 2),
+        open=Decimal(100),
+        high=Decimal(110),
+        low=Decimal(99),
+        close=Decimal(105),
+        volume=Decimal(1000),
+        amount=Decimal(105000),
+        source=DAILY_BAR_SOURCE,
+    )
+    bad = ProviderDailyBar(
+        provider_symbol="AAPL.US",
+        trade_date=date(2024, 1, 3),
+        open=Decimal(100),
+        high=Decimal(90),
+        low=Decimal(95),
+        close=Decimal(100),
+        volume=Decimal(1000),
+        amount=Decimal(1),
+        source=DAILY_BAR_SOURCE,
+    )
+    provider = _FakePriceProvider({"AAPL.US": [good, bad]})
+    written = sync_daily_prices(
+        provider=provider,
+        start=date(2024, 1, 1),
+        end=date(2024, 1, 5),
+        markets=["US"],
+        symbols=["AAPL"],
+        session=db_session,
+        throttle_seconds=0.0,
+    )
+    db_session.flush()
+    assert written == 1
+    rows = DailyPriceRepository(db_session).list_by_instrument(instrument_id)
+    assert len(rows) == 1
+    assert rows[0].trade_date == date(2024, 1, 2)
+
+
 def test_max_new_symbols_limits_first_time_queries(db_session: Session) -> None:
     _seed_mapped_instrument(
         db_session,

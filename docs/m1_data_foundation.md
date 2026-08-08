@@ -67,14 +67,18 @@
 | 命令 | 作用 |
 | --- | --- |
 | `devbox run sync-instruments` | `security_list` + `static_info` → 主数据 + 映射 |
-| `devbox run sync-daily-prices -- --start … --end …` | 历史 K 线 → `daily_price` |
+| `devbox run sync-daily-prices -- …` | 历史 K 线 → `daily_price` |
 | `devbox run list-history-symbols` | 查看本月配额账本中的标的 |
 
 `sync-daily-prices` 常用参数：
 
+- `--start` / `--end` — 可选；**都省略时默认最近 10 个自然日**（UTC 今日为 end）  
+- `--days N` — 省略 start/end 时的窗口长度（默认 10，含首尾）  
 - `--markets` / `--symbols` / `--limit`  
 - `--max-new-symbols` — 限制本 run 新占配额的标的数  
 - `--only-already-queried` — 优先本月账本中已有标的  
+
+入库前做 **OHLC 简单校验**（`high>=low`、高低包住开收、价格>0、量/额非负）；不通过则跳过并打日志，不写库。
 
 参数写在 `--` 之后（Devbox 通过 `"$@"` 转发）。
 
@@ -146,8 +150,6 @@ PriceQueryService(session).get_prices_by_symbol(
 
 ## 非阻塞后续（不重开 M1）
 
-以下可以后再做，不视为 M1 未完成：
-
-1. 可选：入库时 OHLC 合理性检查  
-2. 日线增量更友好的默认日期区间  
+1. ~~入库 OHLC 校验~~ — 已做（跳过非法 bar）  
+2. ~~默认增量日期~~ — 已做（`--days`，默认 10 自然日）  
 3. 稀疏估值观测（仅当产品需要长桥周/月 PE 历史——**不要**做成 `daily_valuation`）  

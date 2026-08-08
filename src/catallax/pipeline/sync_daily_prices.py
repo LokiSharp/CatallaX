@@ -18,6 +18,8 @@ from catallax.db.repositories.symbol_map import InstrumentSymbolMapRepository
 from catallax.db.repositories.sync_log import DataSyncLogRepository
 from catallax.db.session import get_engine, session_scope
 from catallax.domain.enums import SyncEntity
+from catallax.domain.ohlc import ohlc_validation_errors
+from catallax.pipeline.date_range import DEFAULT_LOOKBACK_DAYS, resolve_sync_date_range
 from catallax.progress import ProgressLine
 from catallax.providers.factory import build_price_provider
 
@@ -27,7 +29,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from catallax.db.models.instrument import InstrumentSymbolMap
-    from catallax.providers.base import DailyPriceProvider
+    from catallax.providers.base import DailyPriceProvider, ProviderDailyBar
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +76,27 @@ def _select_targets(
     return selected
 
 
+def _reject_invalid_bar(bar: ProviderDailyBar, *, provider_symbol: str) -> bool:
+    """Log and return True when ``bar`` fails OHLC checks (should not write)."""
+    errors = ohlc_validation_errors(
+        open_=bar.open,
+        high=bar.high,
+        low=bar.low,
+        close=bar.close,
+        volume=bar.volume,
+        amount=bar.amount,
+    )
+    if not errors:
+        return False
+    logger.warning(
+        "skip invalid OHLC %s %s: %s",
+        provider_symbol,
+        bar.trade_date,
+        "; ".join(errors),
+    )
+    return True
+
+
 def _sync_one_symbol(
     *,
     provider: DailyPriceProvider,
@@ -82,15 +105,22 @@ def _sync_one_symbol(
     end: date,
     prices: DailyPriceRepository,
     history: ProviderHistorySymbolRepository,
-) -> int:
-    """Fetch and upsert bars for one mapping. Returns bars written."""
+) -> tuple[int, int]:
+    """Fetch and upsert bars for one mapping.
+
+    Returns ``(bars_written, bars_skipped_invalid)``.
+    """
     bars = provider.get_daily_bars(
         provider_symbol=mapping.provider_symbol,
         start=start,
         end=end,
     )
     written = 0
+    skipped = 0
     for bar in bars:
+        if _reject_invalid_bar(bar, provider_symbol=mapping.provider_symbol):
+            skipped += 1
+            continue
         prices.upsert(
             instrument_id=mapping.instrument_id,
             trade_date=bar.trade_date,
@@ -108,7 +138,54 @@ def _sync_one_symbol(
         provider_symbol=mapping.provider_symbol,
         instrument_id=mapping.instrument_id,
     )
-    return written
+    return written, skipped
+
+
+def _run_sync_loop(
+    *,
+    provider: DailyPriceProvider,
+    targets: Sequence[InstrumentSymbolMap],
+    start: date,
+    end: date,
+    prices: DailyPriceRepository,
+    history: ProviderHistorySymbolRepository,
+    throttle_seconds: float,
+) -> tuple[int, int, list[str]]:
+    """Process targets; return written, skipped_invalid, failure messages."""
+    progress = ProgressLine()
+    total_targets = len(targets)
+    bars_written = 0
+    bars_skipped = 0
+    failures: list[str] = []
+    if total_targets == 0:
+        progress.finish("no instruments matched filters")
+        return 0, 0, failures
+    for idx, mapping in enumerate(targets, start=1):
+        sym = mapping.provider_symbol
+        progress.update(f"daily {idx}/{total_targets} {sym}")
+        try:
+            written, skipped = _sync_one_symbol(
+                provider=provider,
+                mapping=mapping,
+                start=start,
+                end=end,
+                prices=prices,
+                history=history,
+            )
+            bars_written += written
+            bars_skipped += skipped
+        except Exception as exc:
+            logger.exception("daily price failed for %s", sym)
+            failures.append(f"{sym}: {exc}")
+        if throttle_seconds > 0 and idx < total_targets:
+            time.sleep(throttle_seconds)
+    skip_note = f", skipped_invalid={bars_skipped}" if bars_skipped else ""
+    progress.finish(
+        f"persisted {bars_written} bars for {total_targets} symbols"
+        + skip_note
+        + (f" ({len(failures)} failed)" if failures else ""),
+    )
+    return bars_written, bars_skipped, failures
 
 
 def sync_daily_prices(
@@ -151,35 +228,22 @@ def sync_daily_prices(
                 only_already_queried=only_already_queried,
                 max_new_symbols=max_new_symbols,
             )
-            progress = ProgressLine()
-            total_targets = len(targets)
-            bars_written = 0
-            failures: list[str] = []
-            if total_targets == 0:
-                progress.finish("no instruments matched filters")
-            for idx, mapping in enumerate(targets, start=1):
-                sym = mapping.provider_symbol
-                progress.update(f"daily {idx}/{total_targets} {sym}")
-                try:
-                    bars_written += _sync_one_symbol(
-                        provider=provider,
-                        mapping=mapping,
-                        start=start,
-                        end=end,
-                        prices=prices,
-                        history=history,
-                    )
-                except Exception as exc:
-                    logger.exception("daily price failed for %s", sym)
-                    failures.append(f"{sym}: {exc}")
-                if throttle_seconds > 0 and idx < total_targets:
-                    time.sleep(throttle_seconds)
-            progress.finish(
-                f"persisted {bars_written} bars for {total_targets} symbols"
-                + (f" ({len(failures)} failed)" if failures else ""),
+            bars_written, bars_skipped, failures = _run_sync_loop(
+                provider=provider,
+                targets=targets,
+                start=start,
+                end=end,
+                prices=prices,
+                history=history,
+                throttle_seconds=throttle_seconds,
             )
-            if failures:
-                log.details = (log.details or "") + f" failures={failures[:20]}"
+            if failures or bars_skipped:
+                extra = ""
+                if bars_skipped:
+                    extra += f" skipped_invalid={bars_skipped}"
+                if failures:
+                    extra += f" failures={failures[:20]}"
+                log.details = (log.details or "") + extra
             logs.mark_success(log, records_written=bars_written)
         except Exception as exc:
             logs.mark_failed(log, error_message=str(exc))
@@ -198,11 +262,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Sync daily prices via Longbridge (ForwardAdjust). "
-            "Records symbols in provider_history_symbol (monthly quota ledger)."
+            "Records symbols in provider_history_symbol (monthly quota ledger). "
+            f"If --start/--end omitted, uses the last {DEFAULT_LOOKBACK_DAYS} "
+            "calendar days ending today (UTC)."
         ),
     )
-    parser.add_argument("--start", required=True, help="Start date YYYY-MM-DD")
-    parser.add_argument("--end", required=True, help="End date YYYY-MM-DD")
+    parser.add_argument(
+        "--start",
+        default=None,
+        help="Start date YYYY-MM-DD (optional; see --days)",
+    )
+    parser.add_argument(
+        "--end",
+        default=None,
+        help="End date YYYY-MM-DD (optional; default today UTC when omitted)",
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=DEFAULT_LOOKBACK_DAYS,
+        help=(
+            f"Inclusive calendar-day span when start and/or end is omitted "
+            f"(default: {DEFAULT_LOOKBACK_DAYS})"
+        ),
+    )
     parser.add_argument(
         "--markets",
         default="",
@@ -248,8 +331,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         datefmt="%H:%M:%S",
         force=True,
     )
-    start = date.fromisoformat(args.start)
-    end = date.fromisoformat(args.end)
+    start_arg = date.fromisoformat(args.start) if args.start else None
+    end_arg = date.fromisoformat(args.end) if args.end else None
+    try:
+        start, end = resolve_sync_date_range(
+            start_arg,
+            end_arg,
+            days=args.days,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     markets = [m.strip().upper() for m in args.markets.split(",") if m.strip()] or None
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()] or None
     provider = build_price_provider(args.provider)

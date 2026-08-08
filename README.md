@@ -20,7 +20,7 @@ License: [MIT](LICENSE)
 - **历史 K 配额账本：** `provider_history_symbol` + `devbox run list-history-symbols`
 - **价格只读 API：** `catallax.services.prices.PriceQueryService`（仅 PostgreSQL）
 
-非阻塞后续（不重开 M1）：OHLC 校验、默认近 5～10 日增量产品化。
+日线同步：默认最近 10 自然日（可改 `--days`）；入库 OHLC 简单校验，非法 bar 跳过。
 
 ### M2 — 估值（窄切片）
 
@@ -93,7 +93,7 @@ GitHub Actions（`.github/workflows/ci.yml`）在 push/PR 到 `main` 时与本�
 | `devbox run db-check` | 应用 → PostgreSQL 连通性冒烟 |
 | `devbox run migrate` | 执行 Alembic 迁移 |
 | `devbox run sync-instruments` | 经长桥同步 CN/HK/US 标的 |
-| `devbox run sync-daily-prices -- --start … --end …` | 同步日线（`--start`/`--end` 必填；参数在 `--` 后） |
+| `devbox run sync-daily-prices -- …` | 同步日线（可省略日期=最近 10 天；参数在 `--` 后） |
 | `devbox run list-history-symbols` | 列出本月历史 K 配额账本中的标的 |
 | `devbox run test` | 运行 pytest |
 | `devbox run lint` | Ruff check |

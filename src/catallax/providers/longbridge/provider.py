@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -273,5 +274,13 @@ def _build_config() -> Config:
     app_secret = settings.longbridge_app_secret.strip()
     access_token = settings.longbridge_access_token.strip()
     if app_key and app_secret and access_token:
-        return Config.from_apikey(app_key, app_secret, access_token)
+        return Config.from_apikey(
+            app_key,
+            app_secret,
+            access_token,
+            # Avoid printing the quote-package table over our progress line.
+            enable_print_quote_packages=False,
+        )
+    # from_apikey_env only reads LONGBRIDGE_PRINT_QUOTE_PACKAGES from the env.
+    os.environ.setdefault("LONGBRIDGE_PRINT_QUOTE_PACKAGES", "false")
     return Config.from_apikey_env()
