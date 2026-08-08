@@ -21,9 +21,7 @@ class ProviderInstrument:
     provider: str
     provider_symbol: str
     provider_exchange: str
-    # Chinese / local name → instrument.name
-    name: str
-    # English name → instrument.name_en (empty string if unknown)
+    name_cn: str
     name_en: str
     market: str
     # CatallaX-normalized exchange code (SSE/SZSE/NASDAQ/NYSE/...) when known.

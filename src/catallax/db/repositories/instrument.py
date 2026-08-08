@@ -25,7 +25,7 @@ class InstrumentRepository:
         self,
         *,
         symbol: str,
-        name: str,
+        name_cn: str,
         market: str,
         exchange: str,
         currency: str,
@@ -38,7 +38,7 @@ class InstrumentRepository:
         """Insert a new instrument row and flush to obtain its id."""
         row = Instrument(
             symbol=symbol,
-            name=name,
+            name_cn=name_cn,
             name_en=name_en,
             market=market,
             exchange=exchange,
@@ -84,7 +84,7 @@ class InstrumentRepository:
         self,
         instrument: Instrument,
         *,
-        name: str | None = None,
+        name_cn: str | None = None,
         name_en: str | None = None,
         exchange: str | None = None,
         currency: str | None = None,
@@ -95,8 +95,8 @@ class InstrumentRepository:
         clear_delist_date: bool = False,
     ) -> Instrument:
         """Mutate mutable fields on an already-attached instrument."""
-        if name is not None:
-            instrument.name = name
+        if name_cn is not None:
+            instrument.name_cn = name_cn
         if name_en is not None:
             instrument.name_en = name_en
         if exchange is not None:
@@ -120,7 +120,7 @@ class InstrumentRepository:
         self,
         *,
         symbol: str,
-        name: str,
+        name_cn: str,
         market: str,
         exchange: str,
         currency: str,
@@ -135,7 +135,7 @@ class InstrumentRepository:
             insert(Instrument)
             .values(
                 symbol=symbol,
-                name=name,
+                name_cn=name_cn,
                 name_en=name_en,
                 market=market,
                 exchange=exchange,
@@ -148,7 +148,7 @@ class InstrumentRepository:
             .on_conflict_do_update(
                 constraint="uq_instrument_market_symbol",
                 set_={
-                    "name": name,
+                    "name_cn": name_cn,
                     "name_en": name_en,
                     "exchange": exchange,
                     "currency": currency,

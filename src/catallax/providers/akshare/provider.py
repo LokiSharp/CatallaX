@@ -110,7 +110,7 @@ class AkshareMarketDataProvider:
                     provider=PROVIDER_NAME,
                     provider_symbol=code,
                     provider_exchange=provider_exchange,
-                    name=name or code,
+                    name_cn=name or code,
                     name_en="",
                     market=Market.CN.value,
                     exchange=exchange,
@@ -153,7 +153,7 @@ class AkshareMarketDataProvider:
                     provider=PROVIDER_NAME,
                     provider_symbol=symbol,
                     provider_exchange="",
-                    name=name or symbol,
+                    name_cn=name or symbol,
                     name_en=name or symbol,
                     market=Market.US.value,
                     # AKShare list endpoints omit venue; do not fake "US" as exchange.

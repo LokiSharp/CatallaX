@@ -65,7 +65,7 @@ def test_longbridge_provider_from_injected_list() -> None:
     assert len(rows) == 3
 
     aapl = next(r for r in rows if r.symbol == "AAPL")
-    assert aapl.name == "苹果"
+    assert aapl.name_cn == "苹果"
     assert aapl.name_en == "Apple Inc."
     assert aapl.exchange == "NASDAQ"
     assert aapl.provider_symbol == "AAPL.US"
@@ -76,7 +76,7 @@ def test_longbridge_provider_from_injected_list() -> None:
 
     moutai = next(r for r in rows if r.symbol == "600519")
     assert moutai.exchange == "SSE"
-    assert moutai.name == "贵州茅台"
+    assert moutai.name_cn == "贵州茅台"
     assert moutai.name_en == "Kweichow Moutai"
     assert moutai.market == Market.CN.value
 
@@ -112,7 +112,7 @@ def test_fallback_uses_secondary_on_primary_failure() -> None:
                     provider="secondary",
                     provider_symbol="AAPL",
                     provider_exchange="",
-                    name="苹果",
+                    name_cn="苹果",
                     name_en="Apple",
                     market="US",
                     exchange="NASDAQ",
@@ -158,7 +158,7 @@ def test_fallback_uses_secondary_on_empty_primary() -> None:
                     provider="secondary",
                     provider_symbol="MSFT",
                     provider_exchange="",
-                    name="微软",
+                    name_cn="微软",
                     name_en="Microsoft",
                     market="US",
                     exchange="NASDAQ",

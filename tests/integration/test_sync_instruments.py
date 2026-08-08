@@ -46,7 +46,7 @@ def _sample_items() -> list[ProviderInstrument]:
             provider="fake",
             provider_symbol="600519",
             provider_exchange="SH",
-            name="贵州茅台",
+            name_cn="贵州茅台",
             name_en="Kweichow Moutai",
             market=Market.CN.value,
             exchange="SSE",
@@ -58,7 +58,7 @@ def _sample_items() -> list[ProviderInstrument]:
             provider="fake",
             provider_symbol="AAPL.US",
             provider_exchange="NASDAQ",
-            name="苹果",
+            name_cn="苹果",
             name_en="Apple Inc.",
             market=Market.US.value,
             exchange="NASDAQ",
@@ -88,7 +88,7 @@ def test_sync_instruments_idempotent(db_session: Session) -> None:
         symbol="600519",
     )
     assert moutai is not None
-    assert moutai.name == "贵州茅台"
+    assert moutai.name_cn == "贵州茅台"
     assert moutai.name_en == "Kweichow Moutai"
     aapl = instruments.get_by_business_key(market=Market.US.value, symbol="AAPL")
     assert aapl is not None
@@ -117,7 +117,7 @@ def test_sync_instruments_updates_name_on_rerun(db_session: Session) -> None:
             provider="fake",
             provider_symbol="600519",
             provider_exchange="SH",
-            name="茅台股份",
+            name_cn="茅台股份",
             name_en="Kweichow Moutai Co",
             market=Market.CN.value,
             exchange="SSE",
@@ -138,5 +138,5 @@ def test_sync_instruments_updates_name_on_rerun(db_session: Session) -> None:
         symbol="600519",
     )
     assert row is not None
-    assert row.name == "茅台股份"
+    assert row.name_cn == "茅台股份"
     assert row.name_en == "Kweichow Moutai Co"

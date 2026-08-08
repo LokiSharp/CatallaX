@@ -28,7 +28,7 @@ pytestmark = pytest.mark.integration
 def _flush_duplicate_instrument(repo: InstrumentRepository, session: Session) -> None:
     repo.create(
         symbol="AAPL",
-        name="Apple Duplicate",
+        name_cn="Apple Duplicate",
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
@@ -55,7 +55,7 @@ def test_instrument_create_and_get(db_session: Session) -> None:
     repo = InstrumentRepository(db_session)
     row = repo.create(
         symbol="600519",
-        name="Kweichow Moutai",
+        name_cn="Kweichow Moutai",
         market=Market.CN.value,
         exchange="SSE",
         currency="CNY",
@@ -77,7 +77,7 @@ def test_instrument_business_key_unique(db_session: Session) -> None:
     repo = InstrumentRepository(db_session)
     repo.create(
         symbol="AAPL",
-        name="Apple Inc.",
+        name_cn="Apple Inc.",
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
@@ -93,7 +93,7 @@ def test_instrument_upsert_is_idempotent(db_session: Session) -> None:
     repo = InstrumentRepository(db_session)
     first = repo.upsert_by_business_key(
         symbol="AAPL",
-        name="Apple Inc.",
+        name_cn="Apple Inc.",
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
@@ -101,7 +101,7 @@ def test_instrument_upsert_is_idempotent(db_session: Session) -> None:
     )
     second = repo.upsert_by_business_key(
         symbol="AAPL",
-        name="Apple Inc. Updated",
+        name_cn="Apple Inc. Updated",
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
@@ -110,7 +110,7 @@ def test_instrument_upsert_is_idempotent(db_session: Session) -> None:
     db_session.flush()
 
     assert first.id == second.id
-    assert second.name == "Apple Inc. Updated"
+    assert second.name_cn == "Apple Inc. Updated"
     assert len(repo.list_by_market(Market.US.value)) == 1
 
 
@@ -118,16 +118,20 @@ def test_instrument_update(db_session: Session) -> None:
     repo = InstrumentRepository(db_session)
     row = repo.create(
         symbol="MSFT",
-        name="Microsoft",
+        name_cn="Microsoft",
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
         asset_type=AssetType.EQUITY.value,
     )
-    repo.update(row, name="Microsoft Corporation", status=InstrumentStatus.ACTIVE.value)
+    repo.update(
+        row,
+        name_cn="Microsoft Corporation",
+        status=InstrumentStatus.ACTIVE.value,
+    )
     db_session.flush()
     assert repo.get_by_id(row.id) is not None
-    assert row.name == "Microsoft Corporation"
+    assert row.name_cn == "Microsoft Corporation"
 
 
 def test_symbol_map_unique_and_upsert(db_session: Session) -> None:
@@ -136,7 +140,7 @@ def test_symbol_map_unique_and_upsert(db_session: Session) -> None:
 
     inst = instruments.create(
         symbol="600519",
-        name="Moutai",
+        name_cn="Moutai",
         market=Market.CN.value,
         exchange="SSE",
         currency="CNY",

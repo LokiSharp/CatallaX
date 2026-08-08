@@ -29,7 +29,7 @@ def _make_instrument(
     repo = InstrumentRepository(session)
     row = repo.create(
         symbol=symbol,
-        name=symbol,
+        name_cn=symbol,
         market=market,
         exchange=exchange,
         currency="USD" if market == Market.US.value else "CNY",

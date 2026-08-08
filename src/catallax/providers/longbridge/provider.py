@@ -95,7 +95,7 @@ def _to_provider_instrument(row: SecurityRow) -> ProviderInstrument:
         provider=PROVIDER_NAME,
         provider_symbol=row.symbol.strip().upper(),
         provider_exchange=exchange,
-        name=name_cn,
+        name_cn=name_cn,
         name_en=name_en,
         market=market,
         exchange=exchange,

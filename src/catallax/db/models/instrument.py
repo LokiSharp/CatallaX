@@ -39,8 +39,7 @@ class Instrument(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     symbol: Mapped[str] = mapped_column(String(64), nullable=False)
-    # Local / Chinese display name (from name_cn when available).
-    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    name_cn: Mapped[str] = mapped_column(String(256), nullable=False)
     name_en: Mapped[str] = mapped_column(
         String(256),
         nullable=False,
