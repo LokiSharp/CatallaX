@@ -30,10 +30,12 @@ CatallaX 是中低频量化研究与组合平台。
     非必要不要使用 `--no-verify` / `CATALLAX_SKIP_HOOKS=1`。
 18. GitHub Actions CI（`.github/workflows/ci.yml`）必须与本地门禁对齐：Devbox 安装、`uv sync`，然后 ruff / format / pyright / pytest。
 19. **禁止伪造历史时间序列**（例如用今日 PE 回填过去日期）。  
-    若 Provider 只有快照或非日频历史，应如实建模或阻塞功能——**不要**落假的日频面板。
+    若 Provider 只有快照或非日频历史，应如实建模或阻塞功能——**不要**落假的日频面板。  
+    **估值策略：** 权威 PE/PB 由日线价格 + 带 PIT 的基本面 **自算**；长桥估值序列/快照仅作验证，不作历史日频 SoT。
 20. 未来财务报表表（利润表 / 资产负债表 / 现金流量表）必须至少包含  
     `report_period`、`announcement_date`、`available_date`。  
     历史读取必须强制：`available_date <= as_of_date`。  
-    在用户明确要求的 milestone 之前，**不要**实现这些表。
+    在用户明确要求的 milestone 之前，**不要**实现这些表。  
+    自算历史估值必须等上述（或等价的每股指标历史）就绪后再做。
 21. Historical Universe 在缺乏可靠生命周期 / 成分历史之前**阻塞**；  
     禁止为幸存者无偏宇宙伪造 list/delist/status。

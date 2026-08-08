@@ -1,130 +1,186 @@
-# M2 估值 — 设计决策（M2.0）
+# M2 估值 — 设计决策
 
-**状态：** M2.0 决策完成 · **M2.1 历史 `daily_valuation` 阻塞**  
-**日期：** 2026-08-09  
-**审查对象：** Longbridge OpenAPI SDK（`longbridge` ≥ 4.4.x）
+**状态：**  
+- M2.0 语义决策：**完成**  
+- M2.1 直接落长桥日频 `daily_valuation`：**阻塞**（能力不匹配）  
+- **主路径（已拍板）：自算 PE/PB；长桥估值仅作验证**  
 
----
-
-## M1
-
-**已关闭。** Security Master、标的同步、日线、历史 K 配额账本均已落地。  
-M1 剩余打磨（OHLC 校验、默认 5～10 日增量产品化）**不阻塞**收口。
+**日期：** 2026-08-09（策略更新：自算为主）  
+**审查对象：** Longbridge OpenAPI SDK（`longbridge` ≥ 4.4.x）+ 已有 `daily_price`
 
 ---
 
-## 问题：能否落「真正的历史日频估值」？
-
-### 检查过的 API
-
-| API | 上下文 | 性质 |
-| --- | --- | --- |
-| `QuoteContext.static_info` | 行情 | **当前快照**：股本、eps、bps、dividend_yield 等 |
-| `QuoteContext.calc_indexes` | 行情 | **当前快照**：`PeTtmRatio`、`PbRatio`、`TotalMarketValue`、`DividendRatioTtm` 等 |
-| `FundamentalContext.valuation` | 基本面 | **当前 / 丰富快照**（PE/PB/PS/股息等容器） |
-| `FundamentalContext.valuation_history` | 基本面 | **真实历史序列**（主要为 PE，有时有 PB/PS） |
-
-### 实盘探测（约 2026-08，有凭证）
-
-| 符号 | PE 历史 | 采样间隔 | PB / PS 历史 |
-| --- | --- | --- | --- |
-| `AAPL.US` | 约 260 点 | **约 7 天（周频）** | **无** |
-| `700.HK` | 约 60 点 | **约 30～31 天（月频）** | **无** |
-
-结论：
-
-1. 长桥通过 `valuation_history` **确实提供真实历史估值序列**，不是把今日 PE 回填到过去。  
-2. 序列 **不是日频**。实测 PE 约为 **美股周频 / 港股月频**。  
-3. 即使有 PE，**PB / PS 历史也经常缺失**。  
-4. 该接口 **无** 历史市值 / 股本序列；`static_info` / `calc_indexes` 仅是 **当下快照**。  
-5. 因此用 **`daily_valuation` + 交易日粒度** 承接该数据 **模型错误**。
-
-### 禁止做法
-
-- 用今日 `calc_indexes` / `static_info` 的 PE/PB **回填** 历史 `trade_date`  
-- 把周频 PE 点伪装成「日 K」  
-- 无来源却硬造流通市值、PCF 等字段  
-
----
-
-## M2.1 决策
+## 已拍板策略
 
 ```text
-M2.1 historical daily valuation blocked by provider capability.
+权威估值 = f(日线价格, 带 PIT 的基本面)
+长桥 valuation / valuation_history / calc_indexes = 校验与对照，不是 SoT
 ```
 
-中文含义：**M2.1 历史日频估值因 Provider 能力阻塞。**
+| 角色 | 来源 | 用途 |
+| --- | --- | --- |
+| **权威（SoT）** | `daily_price.close` + 历史 EPS/BPS 等（PIT） | 研究 / 因子 / 回测用的 PE、PB |
+| **验证** | 长桥 `valuation_history`、`calc_indexes`、`valuation` | 抽查偏差、发现口径/bug，**不**当历史日频面板主源 |
 
-- **阻塞：** 实现交易日面板式 `daily_valuation` + `sync_daily_valuation`  
-- **并非永久封死：** 将来若产品需要，可做 **稀疏观测** 模型（见下，**本次不实现**）
+禁止：
 
-### 未来候选模型（当前不实现）
+- 用今日长桥 PE 回填历史交易日  
+- 无 PIT 基本面时「假装」已有历史日频估值  
+- 把验证源与权威源混在同一列且不区分 `source`  
 
-若需要落库长桥 PE 历史：
+---
+
+## 为什么不直接用长桥当日频估值主源
+
+### API 性质
+
+| API | 性质 |
+| --- | --- |
+| `static_info` / `calc_indexes` | **当前快照** |
+| `FundamentalContext.valuation` | **当前快照** |
+| `FundamentalContext.valuation_history` | **真实历史**，但实测多为 **周频（美）/ 月频（港）**，PB/PS 常缺 |
+
+### 实盘探测摘要
+
+| 符号 | PE 历史间隔 | PB/PS |
+| --- | --- | --- |
+| `AAPL.US` | ~7 日 | 常无 |
+| `700.HK` | ~30 日 | 常无 |
+
+→ 不适合作为 `(instrument_id, trade_date)` 的完整交易日估值面板。
+
+---
+
+## 自算路径（主路径）
+
+### 公式（默认定义，实现时写死并测）
+
+| 指标 | 定义 |
+| --- | --- |
+| PE_TTM | `close / eps_ttm`（`eps_ttm ≤ 0` 或缺失 → null） |
+| PB | `close / bps`（`bps ≤ 0` 或缺失 → null） |
+
+可选后续：PS_TTM、市值 = `close × shares`（需历史股本与口径）。
+
+### 输入依赖
+
+| 输入 | 已有？ | 要求 |
+| --- | --- | --- |
+| `close` | **有** `daily_price`（`longbridge:forward`） | 与基本面复权/股本口径要对齐 |
+| `eps_ttm` / 报告期 EPS | **无历史表** | 必须带 `available_date`（及 report/announcement） |
+| `bps` | **无历史表** | 同上 |
+
+**当前阻塞点：** 不是公式，而是 **带 PIT 的历史 EPS/BPS 尚未入库**。
+
+### 复权与口径（必须先约定再写库）
+
+二选一写进实现与文档，禁止混用：
+
+1. **前复权价 + 与之一致调整过的每股指标**，或  
+2. **未复权价 + 当时股本/EPS**  
+
+现阶段日线是 `longbridge:forward`，自算时要么：
+
+- 基本面侧同步做一致调整，或  
+- 明确「PE/PB 仅基于前复权价 + 未调整 EPS」的近似误差，并在验证中量化  
+
+### 目标表（实现时再建，本次可仅设计）
 
 ```text
-valuation_observation
+daily_valuation
   instrument_id
-  as_of_date          -- 观测日历日（来自 timestamp）
-  pe                  -- 可空
-  pb                  -- 可空
-  ps                  -- 可空
-  source              -- 例如 longbridge:fundamental_valuation_history
+  trade_date
+  pe_ttm          -- nullable
+  pb              -- nullable
+  -- 可选: ps_ttm, market_cap, shares
+  source          -- 例如 catallax:computed:v1
   created_at / updated_at
-  PK (instrument_id, as_of_date, source)  -- 或等价
+  PK (instrument_id, trade_date)
 ```
 
-语义：**不规则时间序列**，不是完整交易日历。消费方 **不得** 假设每个交易日一行。
+语义：每个**有日线且当时已可得**基本面的交易日一行；中间 EPS 不变、价格变，PE 每天可变——**合法**，前提是 EPS 的 `available_date` 正确。
 
-若只要实时快照，应另表，例如  
-`valuation_snapshot (instrument_id, observed_at, …)`，  
-**禁止** 把快照写进历史行并挂上过去的 `trade_date`。
+计算任务（未来）：
 
----
-
-## 字段映射备忘（将来做观测表时）
-
-| 长桥 | 是否采用 | 说明 |
-| --- | --- | --- |
-| `valuation_history` → PE 列表 | 是（未来） | 真实历史；周/月频 |
-| `valuation_history` → PB/PS | 可选 | 经常为空 |
-| `valuation` 快照 | 仅实时/研究 | 不是历史 |
-| `calc_indexes` PE/PB/市值 | 仅实时 | 无日期维度 |
-| `static_info` 股本/eps/bps | 实时 / 基本面快照 | 不是日频历史 |
+```text
+for each trade_date:
+  eps, bps = latest fundamentals where available_date <= trade_date
+  pe, pb = f(close[trade_date], eps, bps)
+  upsert daily_valuation source=catallax:computed:...
+```
 
 ---
 
-## 时点正确性（财务报表 — 未来）
+## 长桥验证路径（辅）
 
-`daily_price` **不需要** `available_date`。
+### 用途
 
-市场公开的估值 **观测点**（若将来存储）用观测日即可，它们不是会计报表。
+- 对同一 `as_of` 附近，比较自算 PE 与长桥 PE（允许定义差：TTM 构成、diluted、调整）  
+- 抽检异常跳变、单位错误、PIT bug  
 
-**未来所有报表表**（`income_statement` / `balance_sheet` / `cashflow_statement`）**必须**至少包含：
+### 落库建议（与权威分离）
+
+```text
+valuation_observation   # 稀疏，非交易日面板
+  instrument_id
+  as_of_date
+  pe / pb / ps          -- 可空
+  source                -- longbridge:fundamental_valuation_history
+  PK (instrument_id, as_of_date, source)
+```
+
+或仅在校验脚本中临时拉取、不落库。  
+**不要** 与 `daily_valuation`（`source=catallax:computed`）混成「无 source 区分的一张糊涂表」。
+
+### 快照 API
+
+`calc_indexes` / `static_info` / `valuation`：仅适合 **实时对照**，禁止当历史序列主源。
+
+---
+
+## 财务报表 PIT（强制，未来表）
+
+所有 `income_statement` / `balance_sheet` / `cashflow_statement`（及派生 EPS/BPS 历史）至少：
 
 - `report_period`  
 - `announcement_date`  
 - `available_date`  
 
-历史读取 **必须** 满足：
+读取：
 
 ```text
 available_date <= as_of_date
 ```
 
-本阶段 **不实现** 三大报表。
+---
+
+## 分阶段实现顺序（建议）
+
+| 阶段 | 内容 | 状态 |
+| --- | --- | --- |
+| M2.0 | 语义：长桥非日频主源；自算为主 | **完成** |
+| M2.1a | 最小基本面：EPS/BPS（或 TTM 点）+ PIT 字段 + 同步 | **未开始** |
+| M2.1b | 自算写入 `daily_valuation`（`source=catallax:computed:…`） | 依赖 2.1a |
+| M2.1c | 长桥 `valuation_history` → 验证（观测表或离线 diff） | 可与 2.1b 并行/稍后 |
+
+**不要**在 2.1a 完成前实现「完整历史 daily_valuation 同步」。
+
+基本面数据源候选（实现时再选，可组合）：
+
+- 长桥 `FundamentalContext.financial_report`（若字段与 PIT 够用）  
+- 美股 SEC EDGAR  
+- 其他明示授权的源  
 
 ---
 
 ## Historical Universe（M3）
 
-**暂缓 / 阻塞**：当前策略下无可靠的上市/退市/状态/成分历史。  
-禁止为推进路线图伪造 Historical Universe。
+仍 **阻塞**（无可靠 list/delist/status/成分历史）。与估值主路径独立。
 
 ---
 
-## 下一步（仅建议）
+## 下一步（需用户授权再编码）
 
-1. 继续按需维护日线覆盖（配额账本）。  
-2. 真正需要估值历史时：实现稀疏 `valuation_observation` + `FundamentalContext`，并做好限速。  
-3. 或另选具备 **日频估值历史** 的数据源 / 用财报+价格自建——须单独决策。  
+1. **M2.1a：** 设计并落地最小「每股指标 / 报表切片」表 + PIT + 一个可测源的同步。  
+2. **M2.1b：** 基于 `daily_price` 与上述指标计算 PE/PB → `daily_valuation`。  
+3. **M2.1c：** 长桥历史 PE 抽样验证与偏差报告。  

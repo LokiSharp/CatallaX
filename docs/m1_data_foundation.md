@@ -152,4 +152,4 @@ PriceQueryService(session).get_prices_by_symbol(
 
 1. ~~入库 OHLC 校验~~ — 已做（跳过非法 bar）  
 2. ~~默认增量日期~~ — 已做（`--days`，默认 10 自然日）  
-3. 稀疏估值观测（仅当产品需要长桥周/月 PE 历史——**不要**做成 `daily_valuation`）  
+3. 估值：见 [`m2_valuation.md`](m2_valuation.md)——**自算 PE/PB 为主**，长桥仅验证；先落 PIT 基本面再算  

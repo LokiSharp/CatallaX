@@ -6,7 +6,7 @@ License: [MIT](LICENSE)
 
 ## 当前状态
 
-**M1：已关闭** · **M2.0：已决策** · **M2.1：阻塞**
+**M1：已关闭** · **M2：自算 PE/PB 为主，长桥仅验证**
 
 ### M1 — 数据地基（已关闭）
 
@@ -22,18 +22,18 @@ License: [MIT](LICENSE)
 
 日线同步：默认最近 10 自然日（可改 `--days`）；入库 OHLC 简单校验，非法 bar 跳过。
 
-### M2 — 估值（窄切片）
+### M2 — 估值
 
-| 切片 | 状态 |
+详见 [`docs/m2_valuation.md`](docs/m2_valuation.md)。
+
+| 原则 | 说明 |
 | --- | --- |
-| **M2.0** 设计 / Provider 语义 | **完成** — 见 [`docs/m2_valuation.md`](docs/m2_valuation.md) |
-| **M2.1** 历史 `daily_valuation` | **阻塞**（Provider 能力不足） |
-
-长桥 `FundamentalContext.valuation_history` 返回 **真实** PE 历史，但频度是 **周/月** 而非日；PB/PS 常缺失。  
-**禁止** 用今日快照回填历史交易日来假装日频估值。
+| **权威** | 用日线价格 + **带 PIT 的 EPS/BPS** 自算 PE/PB → 未来 `daily_valuation` |
+| **验证** | 长桥 `valuation_history` / `calc_indexes` 等只做对照，不当历史日频 SoT |
+| **阻塞** | 在历史 EPS/BPS（`available_date`）入库前，不写「完整历史日频估值」 |
 
 ```text
-M2.1 historical daily valuation blocked by provider capability.
+权威估值 = catallax computed；长桥 = validation only
 ```
 
 ## 前置条件
