@@ -1,10 +1,11 @@
-"""Security Master tables: instrument, instrument_symbol_map, data_sync_log.
+"""Initial schema (squashed for early development).
 
-Revision ID: 0002
-Revises: 0001
-Create Date: 2026-08-08
+Revision ID: 0001
+Revises:
+Create Date: 2026-08-09
 
-Milestone 1.1 — schema only; no market-data sync.
+Single baseline for current CatallaX tables:
+instrument, instrument_symbol_map, data_sync_log, daily_price.
 """
 
 from __future__ import annotations
@@ -17,20 +18,31 @@ from alembic import op
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-# revision identifiers, used by Alembic.
-revision: str = "0002"
-down_revision: str | Sequence[str] | None = "0001"
+revision: str = "0001"
+down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Create Security Master tables and constraints."""
+    """Create full schema at current design."""
     op.create_table(
         "instrument",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
         sa.Column("symbol", sa.String(length=64), nullable=False),
-        sa.Column("name", sa.String(length=256), nullable=False),
+        sa.Column("name_cn", sa.String(length=256), nullable=False),
+        sa.Column(
+            "name_en",
+            sa.String(length=256),
+            server_default=sa.text("''"),
+            nullable=False,
+        ),
+        sa.Column(
+            "name_hk",
+            sa.String(length=256),
+            server_default=sa.text("''"),
+            nullable=False,
+        ),
         sa.Column("market", sa.String(length=8), nullable=False),
         sa.Column("exchange", sa.String(length=32), nullable=False),
         sa.Column("currency", sa.String(length=8), nullable=False),
@@ -56,12 +68,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "market",
-            "exchange",
-            "symbol",
-            name="uq_instrument_market_exchange_symbol",
-        ),
+        sa.UniqueConstraint("market", "symbol", name="uq_instrument_market_symbol"),
     )
     op.create_index(
         "ix_instrument_market_status",
@@ -75,6 +82,7 @@ def upgrade() -> None:
         ["list_date", "delist_date"],
         unique=False,
     )
+    op.create_index("ix_instrument_exchange", "instrument", ["exchange"], unique=False)
 
     op.create_table(
         "instrument_symbol_map",
@@ -168,9 +176,58 @@ def upgrade() -> None:
         unique=False,
     )
 
+    op.create_table(
+        "daily_price",
+        sa.Column("instrument_id", sa.BigInteger(), nullable=False),
+        sa.Column("trade_date", sa.Date(), nullable=False),
+        sa.Column("open", sa.Numeric(precision=18, scale=6), nullable=False),
+        sa.Column("high", sa.Numeric(precision=18, scale=6), nullable=False),
+        sa.Column("low", sa.Numeric(precision=18, scale=6), nullable=False),
+        sa.Column("close", sa.Numeric(precision=18, scale=6), nullable=False),
+        sa.Column("volume", sa.Numeric(precision=24, scale=4), nullable=False),
+        sa.Column("amount", sa.Numeric(precision=24, scale=4), nullable=True),
+        sa.Column("source", sa.String(length=64), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["instrument_id"],
+            ["instrument.id"],
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("instrument_id", "trade_date"),
+    )
+    op.create_index(
+        "ix_daily_price_trade_date",
+        "daily_price",
+        ["trade_date"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_daily_price_trade_date_instrument",
+        "daily_price",
+        ["trade_date", "instrument_id"],
+        unique=False,
+    )
+
 
 def downgrade() -> None:
-    """Drop Security Master tables."""
+    """Drop all tables from the baseline schema."""
+    op.drop_index(
+        "ix_daily_price_trade_date_instrument",
+        table_name="daily_price",
+    )
+    op.drop_index("ix_daily_price_trade_date", table_name="daily_price")
+    op.drop_table("daily_price")
     op.drop_index(
         "ix_data_sync_log_provider_entity_started",
         table_name="data_sync_log",
@@ -179,6 +236,7 @@ def downgrade() -> None:
     op.drop_index("ix_symbol_map_provider_active", table_name="instrument_symbol_map")
     op.drop_index("ix_symbol_map_instrument_id", table_name="instrument_symbol_map")
     op.drop_table("instrument_symbol_map")
+    op.drop_index("ix_instrument_exchange", table_name="instrument")
     op.drop_index("ix_instrument_list_delist", table_name="instrument")
     op.drop_index("ix_instrument_market_status", table_name="instrument")
     op.drop_table("instrument")
