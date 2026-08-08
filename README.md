@@ -6,21 +6,21 @@ License: [MIT](LICENSE)
 
 ## Current Status
 
-**Milestone 1.3+ — Instrument sync (Longbridge default)**
+**Milestone 1.3+ — Instrument sync (Longbridge only)**
 
 Security Master + `daily_price` schema, plus **instrument list sync** into
 `instrument` / `instrument_symbol_map` (idempotent).
 
-- **Default provider:** Longbridge OpenAPI
-- **Fallback:** AKShare (if Longbridge fails or returns empty)
+- **Provider:** Longbridge OpenAPI only
 - **Default markets:** `CN,HK,US`
-- Override with `CATALLAX_MARKET_DATA_PROVIDER=akshare` or `--provider akshare`
+- Fields: `name_cn` / `name_en`, real `exchange` from `static_info`
 
 Daily price download is **not** implemented yet (Milestone 1.4).
 
 ## Prerequisites
 
 - [Devbox](https://www.jetify.com/devbox)
+- [Longbridge OpenAPI](https://open.longbridge.com/) credentials
 
 ## Environment Setup
 
@@ -33,17 +33,13 @@ devbox run migrate
 devbox run check
 ```
 
-Copy `.env.example` to `.env` if you need local overrides (defaults work out of the box).
-
-For Longbridge (default instrument source), set credentials in `.env`:
+Copy `.env.example` to `.env` and set Longbridge credentials:
 
 ```bash
 CATALLAX_LONGBRIDGE_APP_KEY=...
 CATALLAX_LONGBRIDGE_APP_SECRET=...
 CATALLAX_LONGBRIDGE_ACCESS_TOKEN=...
 ```
-
-Without credentials, sync falls back to AKShare automatically.
 
 `devbox run setup` points `core.hooksPath` at [`.githooks/`](.githooks):
 
@@ -77,7 +73,7 @@ Toolchain is installed via Devbox so CI matches the local environment.
 | `devbox run db-reset` | Drop + recreate `catallax_dev`, then migrate (local only) |
 | `devbox run db-check` | Smoke-test app → PostgreSQL connectivity |
 | `devbox run migrate` | Run Alembic migrations |
-| `devbox run sync-instruments` | Sync CN/HK/US instruments (Longbridge → AKShare fallback) |
+| `devbox run sync-instruments` | Sync CN/HK/US instruments via Longbridge |
 | `devbox run test` | Run pytest |
 | `devbox run lint` | Ruff check |
 | `devbox run format` | Ruff format |
@@ -92,8 +88,7 @@ Toolchain is installed via Devbox so CI matches the local environment.
 - PostgreSQL
 - SQLAlchemy 2.x
 - Alembic
-- Longbridge OpenAPI (default market data)
-- AKShare (fallback)
+- Longbridge OpenAPI
 - pytest
 - Ruff
 - Pyright

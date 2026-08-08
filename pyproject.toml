@@ -10,7 +10,6 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
-    "akshare>=1.18.83",
     "alembic>=1.19.0",
     "longbridge>=4.4.3",
     "psycopg[binary]>=3.3.4",

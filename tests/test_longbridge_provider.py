@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from catallax.domain.enums import Market
-from catallax.providers.base import ProviderInstrument
-from catallax.providers.fallback import FallbackMarketDataProvider
 from catallax.providers.longbridge.provider import (
     LongbridgeMarketDataProvider,
     SecurityRow,
@@ -16,9 +12,6 @@ from catallax.providers.longbridge.symbols import (
     map_longbridge_exchange,
     parse_longbridge_symbol,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 
 def test_parse_longbridge_symbol() -> None:
@@ -91,97 +84,3 @@ def test_longbridge_provider_from_injected_list() -> None:
     assert tencent.name_cn == "腾讯控股"
     assert tencent.name_en == "TENCENT"
     assert tencent.provider_symbol == "700.HK"
-
-
-def test_fallback_uses_secondary_on_primary_failure() -> None:
-    class Boom:
-        @property
-        def name(self) -> str:
-            return "primary"
-
-        def get_instruments(
-            self,
-            *,
-            markets: Sequence[str] | None = None,
-        ) -> list[ProviderInstrument]:
-            _ = markets
-            msg = "network down"
-            raise RuntimeError(msg)
-
-    class Ok:
-        @property
-        def name(self) -> str:
-            return "secondary"
-
-        def get_instruments(
-            self,
-            *,
-            markets: Sequence[str] | None = None,
-        ) -> list[ProviderInstrument]:
-            _ = markets
-            return [
-                ProviderInstrument(
-                    provider="secondary",
-                    provider_symbol="AAPL",
-                    provider_exchange="",
-                    name_cn="苹果",
-                    name_en="Apple",
-                    market="US",
-                    exchange="NASDAQ",
-                    currency="USD",
-                    asset_type="equity",
-                    symbol="AAPL",
-                )
-            ]
-
-    fb = FallbackMarketDataProvider(Boom(), Ok())  # type: ignore[arg-type]
-    items = fb.get_instruments(markets=["US"])
-    assert len(items) == 1
-    assert fb.name == "secondary"
-
-
-def test_fallback_uses_secondary_on_empty_primary() -> None:
-    class Empty:
-        @property
-        def name(self) -> str:
-            return "primary"
-
-        def get_instruments(
-            self,
-            *,
-            markets: Sequence[str] | None = None,
-        ) -> list[ProviderInstrument]:
-            _ = markets
-            return []
-
-    class Ok:
-        @property
-        def name(self) -> str:
-            return "secondary"
-
-        def get_instruments(
-            self,
-            *,
-            markets: Sequence[str] | None = None,
-        ) -> list[ProviderInstrument]:
-            _ = markets
-            return [
-                ProviderInstrument(
-                    provider="secondary",
-                    provider_symbol="MSFT",
-                    provider_exchange="",
-                    name_cn="微软",
-                    name_en="Microsoft",
-                    market="US",
-                    exchange="NASDAQ",
-                    currency="USD",
-                    asset_type="equity",
-                    symbol="MSFT",
-                )
-            ]
-
-    fb = FallbackMarketDataProvider(Empty(), Ok())  # type: ignore[arg-type]
-    items = fb.get_instruments()
-    assert items[0].symbol == "MSFT"
-    assert items[0].name_en == "Microsoft"
-    assert fb.name == "secondary"

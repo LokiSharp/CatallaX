@@ -104,7 +104,7 @@ def sync_instruments(
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry: ``uv run python -m catallax.pipeline.sync_instruments``."""
     parser = argparse.ArgumentParser(
-        description="Sync instrument master (default: Longbridge, AKShare fallback)",
+        description="Sync instrument master via Longbridge OpenAPI",
     )
     parser.add_argument(
         "--markets",
@@ -114,7 +114,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--provider",
         default=None,
-        help="longbridge | longbridge-only | akshare (default: settings)",
+        help="Provider name (default: settings / longbridge)",
     )
     parser.add_argument(
         "-v",
