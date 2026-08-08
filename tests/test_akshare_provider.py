@@ -24,6 +24,11 @@ def test_normalize_us_symbol() -> None:
     assert normalize_us_symbol("AAPL") == "AAPL"
     assert normalize_us_symbol("105.AAPL") == "AAPL"
     assert normalize_us_symbol("aapl") == "AAPL"
+    # Class shares must keep the suffix (not collapse to "A"/"B").
+    assert normalize_us_symbol("BRK.A") == "BRK.A"
+    assert normalize_us_symbol("BRK.B") == "BRK.B"
+    assert normalize_us_symbol("106.BRK.B") == "BRK.B"
+    assert normalize_us_symbol("BF.B") == "BF.B"
 
 
 def test_get_instruments_from_injected_frames() -> None:
@@ -35,8 +40,8 @@ def test_get_instruments_from_injected_frames() -> None:
     )
     us = pd.DataFrame(
         {
-            "代码": ["105.AAPL", "MSFT"],
-            "名称": ["苹果", "微软"],
+            "代码": ["105.AAPL", "MSFT", "106.BRK.B", "BRK.A"],
+            "名称": ["苹果", "微软", "伯克希尔B", "伯克希尔A"],
         }
     )
     provider = AkshareMarketDataProvider(
@@ -44,7 +49,7 @@ def test_get_instruments_from_injected_frames() -> None:
         fetch_us=lambda: us,
     )
     rows = provider.get_instruments(markets=["CN", "US"])
-    assert len(rows) == 4
+    assert len(rows) == 6
 
     cn_rows = [r for r in rows if r.market == Market.CN.value]
     assert {r.provider_symbol for r in cn_rows} == {"600519", "000001"}
@@ -56,8 +61,9 @@ def test_get_instruments_from_injected_frames() -> None:
 
     us_rows = [r for r in rows if r.market == Market.US.value]
     symbols = {r.symbol for r in us_rows}
-    assert "AAPL" in symbols
-    assert "MSFT" in symbols
+    assert symbols == {"AAPL", "MSFT", "BRK.B", "BRK.A"}
     aapl = next(r for r in us_rows if r.symbol == "AAPL")
     assert aapl.provider_symbol == "AAPL"
     assert aapl.currency == "USD"
+    brk_b = next(r for r in us_rows if r.symbol == "BRK.B")
+    assert brk_b.provider_symbol == "BRK.B"

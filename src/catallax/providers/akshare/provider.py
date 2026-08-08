@@ -38,13 +38,19 @@ def clean_name(raw: str) -> str:
 
 
 def normalize_us_symbol(raw: str) -> str:
-    """Strip East-money style prefixes like ``105.AAPL`` → ``AAPL`` when present."""
+    """Normalize US tickers from AKShare / East-money list formats.
+
+    East-money ``stock_us_spot_em`` builds codes as ``{market_id}.{ticker}``
+    (e.g. ``105.AAPL``, ``106.BRK.B``). Only strip a **numeric** market-id
+    prefix. Do **not** treat class-share dots as separators — otherwise
+    ``BRK.B`` collapses to ``B``.
+    """
     text = raw.strip().upper()
-    if "." in text:
-        parts = text.split(".")
-        alpha = [p for p in parts if re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,15}", p)]
-        if alpha:
-            return alpha[-1]
+    if "." not in text:
+        return text
+    head, rest = text.split(".", maxsplit=1)
+    if head.isdigit() and rest:
+        return rest
     return text
 
 
