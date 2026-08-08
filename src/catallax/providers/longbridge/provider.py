@@ -6,11 +6,12 @@ import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from longbridge.openapi import Config, Market, QuoteContext
+from longbridge.openapi import Config, Market, QuoteContext, Security
 
 from catallax.config import settings
-from catallax.domain.enums import AssetType, InstrumentStatus
+from catallax.domain.enums import InstrumentStatus
 from catallax.domain.markets import DEFAULT_MARKETS
+from catallax.progress import ProgressLine
 from catallax.providers.base import ProviderInstrument
 from catallax.providers.longbridge.symbols import (
     currency_for_market,
@@ -66,19 +67,27 @@ class LongbridgeMarketDataProvider:
         lb_markets = [m for m in ("CN", "HK", "US") if m in wanted]
 
         out: list[ProviderInstrument] = []
+        progress = ProgressLine()
+        markets_label = ",".join(lb_markets) if lb_markets else ",".join(sorted(wanted))
+        progress.update(f"fetch {markets_label} …")
         for lb_market in lb_markets:
-            rows = self._fetch_market(lb_market)
+            rows = self._fetch_market(lb_market, progress=progress)
             for row in rows:
                 item = _to_provider_instrument(row)
                 if item.market in wanted:
                     out.append(item)
-        logger.info("Longbridge instruments fetched: %s", len(out))
+        progress.finish(f"fetched {len(out)} instruments ({markets_label})")
         return out
 
-    def _fetch_market(self, market: str) -> list[SecurityRow]:
+    def _fetch_market(
+        self,
+        market: str,
+        *,
+        progress: ProgressLine | None = None,
+    ) -> list[SecurityRow]:
         if self._list_fetcher is not None:
             return self._list_fetcher(market)
-        return _fetch_security_list_live(market)
+        return _fetch_security_list_live(market, progress=progress)
 
 
 def _to_provider_instrument(row: SecurityRow) -> ProviderInstrument:
@@ -92,19 +101,23 @@ def _to_provider_instrument(row: SecurityRow) -> ProviderInstrument:
         provider=PROVIDER_NAME,
         provider_symbol=row.symbol.strip().upper(),
         provider_exchange=exchange,
+        market=market,
+        exchange=exchange,
         name_cn=name_cn,
         name_en=name_en,
         name_hk=name_hk,
-        market=market,
-        exchange=exchange,
         currency=currency,
-        asset_type=AssetType.EQUITY.value,
+        # security_list / static_info do not expose lifecycle status.
         status=InstrumentStatus.ACTIVE.value,
         symbol=bare,
     )
 
 
-def _fetch_security_list_live(market: str) -> list[SecurityRow]:
+def _fetch_security_list_live(
+    market: str,
+    *,
+    progress: ProgressLine | None = None,
+) -> list[SecurityRow]:
     """Call Longbridge ``security_list`` + batched ``static_info``."""
     config = _build_config()
     ctx = QuoteContext(config)
@@ -117,7 +130,16 @@ def _fetch_security_list_live(market: str) -> list[SecurityRow]:
         msg = f"unsupported Longbridge market: {market}"
         raise ValueError(msg)
 
+    if progress is not None:
+        progress.update(f"fetch {market}: security_list …")
     securities = ctx.security_list(market_enum)
+    base = _rows_from_security_list(securities)
+    _enrich_with_static_info(ctx, base, market=market, progress=progress)
+    return list(base.values())
+
+
+def _rows_from_security_list(securities: Sequence[Security]) -> dict[str, SecurityRow]:
+    """Build symbol → row map from ``security_list`` results."""
     base: dict[str, SecurityRow] = {}
     for sec in securities:
         sym = str(sec.symbol).strip()
@@ -131,10 +153,28 @@ def _fetch_security_list_live(market: str) -> list[SecurityRow]:
             exchange="",
             currency="",
         )
+    return base
 
+
+def _enrich_with_static_info(
+    ctx: QuoteContext,
+    base: dict[str, SecurityRow],
+    *,
+    market: str,
+    progress: ProgressLine | None = None,
+) -> None:
+    """Mutate ``base`` with batched ``static_info`` exchange / currency / names."""
     symbols = list(base.keys())
-    for i in range(0, len(symbols), _STATIC_INFO_BATCH):
+    if not symbols:
+        return
+    total_batches = (len(symbols) + _STATIC_INFO_BATCH - 1) // _STATIC_INFO_BATCH
+    for batch_idx, i in enumerate(range(0, len(symbols), _STATIC_INFO_BATCH), start=1):
         chunk = symbols[i : i + _STATIC_INFO_BATCH]
+        if progress is not None:
+            progress.update(
+                f"fetch {market}: static_info {batch_idx}/{total_batches} "
+                f"({len(symbols)} symbols)",
+            )
         try:
             infos = ctx.static_info(chunk)
         except Exception:
@@ -156,8 +196,6 @@ def _fetch_security_list_live(market: str) -> list[SecurityRow]:
                 exchange=str(info.exchange).strip(),
                 currency=str(info.currency).strip(),
             )
-
-    return list(base.values())
 
 
 def _build_config() -> Config:

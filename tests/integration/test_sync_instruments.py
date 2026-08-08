@@ -9,7 +9,7 @@ import pytest
 from catallax.db.repositories.instrument import InstrumentRepository
 from catallax.db.repositories.symbol_map import InstrumentSymbolMapRepository
 from catallax.db.repositories.sync_log import DataSyncLogRepository
-from catallax.domain.enums import AssetType, Market, SyncEntity, SyncStatus
+from catallax.domain.enums import Market, SyncEntity, SyncStatus
 from catallax.pipeline.sync_instruments import sync_instruments
 from catallax.providers.base import ProviderInstrument
 
@@ -46,39 +46,36 @@ def _sample_items() -> list[ProviderInstrument]:
             provider="fake",
             provider_symbol="600519",
             provider_exchange="SH",
+            market=Market.CN.value,
+            exchange="SSE",
             name_cn="贵州茅台",
             name_en="Kweichow Moutai",
             name_hk="",
-            market=Market.CN.value,
-            exchange="SSE",
             currency="CNY",
-            asset_type=AssetType.EQUITY.value,
             symbol="600519",
         ),
         ProviderInstrument(
             provider="fake",
             provider_symbol="AAPL.US",
             provider_exchange="NASDAQ",
+            market=Market.US.value,
+            exchange="NASDAQ",
             name_cn="苹果",
             name_en="Apple Inc.",
             name_hk="",
-            market=Market.US.value,
-            exchange="NASDAQ",
             currency="USD",
-            asset_type=AssetType.EQUITY.value,
             symbol="AAPL",
         ),
         ProviderInstrument(
             provider="fake",
             provider_symbol="700.HK",
             provider_exchange="SEHK",
+            market=Market.HK.value,
+            exchange="SEHK",
             name_cn="腾讯控股",
             name_en="TENCENT",
             name_hk="騰訊控股",
-            market=Market.HK.value,
-            exchange="SEHK",
             currency="HKD",
-            asset_type=AssetType.EQUITY.value,
             symbol="700",
         ),
     ]
@@ -137,13 +134,12 @@ def test_sync_instruments_updates_name_on_rerun(db_session: Session) -> None:
             provider="fake",
             provider_symbol="600519",
             provider_exchange="SH",
+            market=Market.CN.value,
+            exchange="SSE",
             name_cn="茅台股份",
             name_en="Kweichow Moutai Co",
             name_hk="",
-            market=Market.CN.value,
-            exchange="SSE",
             currency="CNY",
-            asset_type=AssetType.EQUITY.value,
             symbol="600519",
         ),
     ]

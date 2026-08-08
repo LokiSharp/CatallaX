@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from catallax.db.repositories.daily_price import DailyPriceRepository
 from catallax.db.repositories.instrument import InstrumentRepository
-from catallax.domain.enums import AssetType, Market
+from catallax.domain.enums import Market
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -33,7 +33,6 @@ def _make_instrument(
         market=market,
         exchange=exchange,
         currency="USD" if market == Market.US.value else "CNY",
-        asset_type=AssetType.EQUITY.value,
     )
     session.flush()
     return row.id

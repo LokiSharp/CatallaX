@@ -11,17 +11,12 @@ class Market(StrEnum):
     HK = "HK"
 
 
-class AssetType(StrEnum):
-    """Instrument asset classification."""
-
-    EQUITY = "equity"
-    ETF = "etf"
-    INDEX = "index"
-    OTHER = "other"
-
-
 class InstrumentStatus(StrEnum):
-    """Listing lifecycle status."""
+    """Listing lifecycle status.
+
+    Longbridge security_list / static_info do not provide this; only set when
+    a real source is available (do not invent values).
+    """
 
     ACTIVE = "active"
     DELISTED = "delisted"

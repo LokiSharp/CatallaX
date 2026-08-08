@@ -30,6 +30,8 @@ def upgrade() -> None:
         "instrument",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
         sa.Column("symbol", sa.String(length=64), nullable=False),
+        sa.Column("market", sa.String(length=8), nullable=False),
+        sa.Column("exchange", sa.String(length=32), nullable=False),
         sa.Column("name_cn", sa.String(length=256), nullable=False),
         sa.Column(
             "name_en",
@@ -43,12 +45,7 @@ def upgrade() -> None:
             server_default=sa.text("''"),
             nullable=False,
         ),
-        sa.Column("market", sa.String(length=8), nullable=False),
-        sa.Column("exchange", sa.String(length=32), nullable=False),
         sa.Column("currency", sa.String(length=8), nullable=False),
-        sa.Column("asset_type", sa.String(length=32), nullable=False),
-        sa.Column("list_date", sa.Date(), nullable=True),
-        sa.Column("delist_date", sa.Date(), nullable=True),
         sa.Column(
             "status",
             sa.String(length=32),
@@ -74,12 +71,6 @@ def upgrade() -> None:
         "ix_instrument_market_status",
         "instrument",
         ["market", "status"],
-        unique=False,
-    )
-    op.create_index(
-        "ix_instrument_list_delist",
-        "instrument",
-        ["list_date", "delist_date"],
         unique=False,
     )
     op.create_index("ix_instrument_exchange", "instrument", ["exchange"], unique=False)
@@ -237,6 +228,5 @@ def downgrade() -> None:
     op.drop_index("ix_symbol_map_instrument_id", table_name="instrument_symbol_map")
     op.drop_table("instrument_symbol_map")
     op.drop_index("ix_instrument_exchange", table_name="instrument")
-    op.drop_index("ix_instrument_list_delist", table_name="instrument")
     op.drop_index("ix_instrument_market_status", table_name="instrument")
     op.drop_table("instrument")

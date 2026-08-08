@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from datetime import date
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,16 +20,13 @@ class ProviderInstrument:
     provider: str
     provider_symbol: str
     provider_exchange: str
-    name_cn: str
-    name_en: str
-    name_hk: str
     market: str
     # CatallaX-normalized exchange code (SSE/SZSE/NASDAQ/NYSE/...) when known.
     exchange: str
+    name_cn: str
+    name_en: str
+    name_hk: str
     currency: str
-    asset_type: str
-    list_date: date | None = None
-    delist_date: date | None = None
     status: str = "active"
     # Canonical display symbol stored on instrument.symbol.
     symbol: str | None = None

@@ -10,8 +10,6 @@ from sqlalchemy.dialects.postgresql import insert
 from catallax.db.models.instrument import Instrument
 
 if TYPE_CHECKING:
-    from datetime import date
-
     from sqlalchemy.orm import Session
 
 
@@ -25,29 +23,23 @@ class InstrumentRepository:
         self,
         *,
         symbol: str,
-        name_cn: str,
         market: str,
         exchange: str,
+        name_cn: str,
         currency: str,
-        asset_type: str,
         name_en: str = "",
         name_hk: str = "",
-        list_date: date | None = None,
-        delist_date: date | None = None,
         status: str = "active",
     ) -> Instrument:
         """Insert a new instrument row and flush to obtain its id."""
         row = Instrument(
             symbol=symbol,
+            market=market,
+            exchange=exchange,
             name_cn=name_cn,
             name_en=name_en,
             name_hk=name_hk,
-            market=market,
-            exchange=exchange,
             currency=currency,
-            asset_type=asset_type,
-            list_date=list_date,
-            delist_date=delist_date,
             status=status,
         )
         self._session.add(row)
@@ -91,11 +83,7 @@ class InstrumentRepository:
         name_hk: str | None = None,
         exchange: str | None = None,
         currency: str | None = None,
-        asset_type: str | None = None,
-        list_date: date | None = None,
-        delist_date: date | None = None,
         status: str | None = None,
-        clear_delist_date: bool = False,
     ) -> Instrument:
         """Mutate mutable fields on an already-attached instrument."""
         fields: dict[str, object] = {
@@ -104,17 +92,11 @@ class InstrumentRepository:
             "name_hk": name_hk,
             "exchange": exchange,
             "currency": currency,
-            "asset_type": asset_type,
-            "list_date": list_date,
             "status": status,
         }
         for attr, value in fields.items():
             if value is not None:
                 setattr(instrument, attr, value)
-        if clear_delist_date:
-            instrument.delist_date = None
-        elif delist_date is not None:
-            instrument.delist_date = delist_date
         self._session.flush()
         return instrument
 
@@ -122,15 +104,12 @@ class InstrumentRepository:
         self,
         *,
         symbol: str,
-        name_cn: str,
         market: str,
         exchange: str,
+        name_cn: str,
         currency: str,
-        asset_type: str,
         name_en: str = "",
         name_hk: str = "",
-        list_date: date | None = None,
-        delist_date: date | None = None,
         status: str = "active",
     ) -> Instrument:
         """Insert or update by (market, symbol). Idempotent; exchange is updated."""
@@ -138,15 +117,12 @@ class InstrumentRepository:
             insert(Instrument)
             .values(
                 symbol=symbol,
+                market=market,
+                exchange=exchange,
                 name_cn=name_cn,
                 name_en=name_en,
                 name_hk=name_hk,
-                market=market,
-                exchange=exchange,
                 currency=currency,
-                asset_type=asset_type,
-                list_date=list_date,
-                delist_date=delist_date,
                 status=status,
             )
             .on_conflict_do_update(
@@ -157,9 +133,6 @@ class InstrumentRepository:
                     "name_hk": name_hk,
                     "exchange": exchange,
                     "currency": currency,
-                    "asset_type": asset_type,
-                    "list_date": list_date,
-                    "delist_date": delist_date,
                     "status": status,
                     "updated_at": func.now(),
                 },

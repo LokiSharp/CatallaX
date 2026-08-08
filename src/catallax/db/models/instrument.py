@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime  # noqa: TC003 — required by SQLAlchemy Mapped eval
+from datetime import datetime  # noqa: TC003 — required by SQLAlchemy Mapped eval
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
-    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -33,12 +32,13 @@ class Instrument(Base):
             name="uq_instrument_market_symbol",
         ),
         Index("ix_instrument_market_status", "market", "status"),
-        Index("ix_instrument_list_delist", "list_date", "delist_date"),
         Index("ix_instrument_exchange", "exchange"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     symbol: Mapped[str] = mapped_column(String(64), nullable=False)
+    market: Mapped[str] = mapped_column(String(8), nullable=False)
+    exchange: Mapped[str] = mapped_column(String(32), nullable=False)
     name_cn: Mapped[str] = mapped_column(String(256), nullable=False)
     name_en: Mapped[str] = mapped_column(
         String(256),
@@ -50,12 +50,7 @@ class Instrument(Base):
         nullable=False,
         server_default=text("''"),
     )
-    market: Mapped[str] = mapped_column(String(8), nullable=False)
-    exchange: Mapped[str] = mapped_column(String(32), nullable=False)
     currency: Mapped[str] = mapped_column(String(8), nullable=False)
-    asset_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    list_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    delist_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,

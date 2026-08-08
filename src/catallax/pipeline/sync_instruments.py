@@ -13,6 +13,7 @@ from catallax.db.repositories.sync_log import DataSyncLogRepository
 from catallax.db.session import get_engine, session_scope
 from catallax.domain.enums import SyncEntity
 from catallax.domain.markets import DEFAULT_MARKETS
+from catallax.progress import ProgressLine
 from catallax.providers.factory import build_instrument_provider
 
 if TYPE_CHECKING:
@@ -24,6 +25,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Refresh the single-line persist bar every N rows.
+_PERSIST_PROGRESS_EVERY = 50
+
 
 def persist_provider_instruments(
     session: Session,
@@ -32,20 +36,21 @@ def persist_provider_instruments(
     """Upsert instruments and symbol maps. Returns number of instruments written."""
     instruments = InstrumentRepository(session)
     maps = InstrumentSymbolMapRepository(session)
+    total = len(items)
     written = 0
+    progress = ProgressLine()
+    if total:
+        progress.update(f"persist 0/{total}")
     for item in items:
         symbol = item.symbol or item.provider_symbol
         row = instruments.upsert_by_business_key(
             symbol=symbol,
+            market=item.market,
+            exchange=item.exchange,
             name_cn=item.name_cn,
             name_en=item.name_en,
             name_hk=item.name_hk,
-            market=item.market,
-            exchange=item.exchange,
             currency=item.currency,
-            asset_type=item.asset_type,
-            list_date=item.list_date,
-            delist_date=item.delist_date,
             status=item.status,
         )
         maps.upsert(
@@ -56,6 +61,9 @@ def persist_provider_instruments(
             is_active=True,
         )
         written += 1
+        if written == total or written % _PERSIST_PROGRESS_EVERY == 0:
+            progress.update(f"persist {written}/{total}")
+    progress.finish(f"persisted {written} instruments")
     return written
 
 
@@ -72,11 +80,12 @@ def sync_instruments(
     """
 
     def _run(active: Session) -> int:
+        market_label = list(markets) if markets else "ALL"
         logs = DataSyncLogRepository(active)
         log = logs.start(
             provider=provider.name,
             entity=SyncEntity.INSTRUMENTS.value,
-            details=f"markets={list(markets) if markets else 'ALL'}",
+            details=f"markets={market_label}",
         )
         try:
             items = provider.get_instruments(markets=markets)
@@ -88,12 +97,6 @@ def sync_instruments(
             logs.mark_failed(log, error_message=str(exc))
             raise
         else:
-            logger.info(
-                "sync_instruments provider=%s markets=%s written=%s",
-                provider.name,
-                markets,
-                count,
-            )
             return count
 
     if session is not None:
@@ -124,9 +127,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Enable debug logging",
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
+    # Default WARNING: progress goes to a single stderr line; -v enables INFO logs.
     logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(levelname)s %(name)s: %(message)s",
+        level=logging.DEBUG if args.verbose else logging.WARNING,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+        force=True,
     )
     markets = [m.strip().upper() for m in args.markets.split(",") if m.strip()]
     provider = build_instrument_provider(args.provider)

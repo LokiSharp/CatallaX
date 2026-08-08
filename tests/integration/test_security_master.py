@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
 from typing import TYPE_CHECKING
 
 import pytest
@@ -12,7 +11,6 @@ from catallax.db.repositories.instrument import InstrumentRepository
 from catallax.db.repositories.symbol_map import InstrumentSymbolMapRepository
 from catallax.db.repositories.sync_log import DataSyncLogRepository
 from catallax.domain.enums import (
-    AssetType,
     InstrumentStatus,
     Market,
     SyncEntity,
@@ -32,7 +30,6 @@ def _flush_duplicate_instrument(repo: InstrumentRepository, session: Session) ->
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
-        asset_type=AssetType.EQUITY.value,
     )
     session.flush()
 
@@ -59,8 +56,6 @@ def test_instrument_create_and_get(db_session: Session) -> None:
         market=Market.CN.value,
         exchange="SSE",
         currency="CNY",
-        asset_type=AssetType.EQUITY.value,
-        list_date=date(2001, 8, 27),
         status=InstrumentStatus.ACTIVE.value,
     )
     db_session.flush()
@@ -81,7 +76,6 @@ def test_instrument_business_key_unique(db_session: Session) -> None:
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
-        asset_type=AssetType.EQUITY.value,
     )
     db_session.flush()
 
@@ -97,7 +91,6 @@ def test_instrument_upsert_is_idempotent(db_session: Session) -> None:
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
-        asset_type=AssetType.EQUITY.value,
     )
     second = repo.upsert_by_business_key(
         symbol="AAPL",
@@ -105,7 +98,6 @@ def test_instrument_upsert_is_idempotent(db_session: Session) -> None:
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
-        asset_type=AssetType.EQUITY.value,
     )
     db_session.flush()
 
@@ -122,7 +114,6 @@ def test_instrument_update(db_session: Session) -> None:
         market=Market.US.value,
         exchange="NASDAQ",
         currency="USD",
-        asset_type=AssetType.EQUITY.value,
     )
     repo.update(
         row,
@@ -144,7 +135,6 @@ def test_symbol_map_unique_and_upsert(db_session: Session) -> None:
         market=Market.CN.value,
         exchange="SSE",
         currency="CNY",
-        asset_type=AssetType.EQUITY.value,
     )
     db_session.flush()
 
