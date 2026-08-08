@@ -6,11 +6,11 @@ License: [MIT](LICENSE)
 
 ## Current Status
 
-**Milestone 1.1 — Security Master Schema**
+**Milestone 1.2 — Daily Price Schema**
 
-Python **3.14+**, Devbox, uv, PostgreSQL. Security Master tables
-(`instrument`, `instrument_symbol_map`, `data_sync_log`) with repositories
-and PostgreSQL integration tests. No market-data sync / AKShare yet.
+Python **3.14+**, Devbox, uv, PostgreSQL. Security Master plus `daily_price`
+(OHLCV, natural key `(instrument_id, trade_date)`, upsert, market/day queries).
+No market-data sync / AKShare yet (starts at Milestone 1.3).
 
 ## Prerequisites
 

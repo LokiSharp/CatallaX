@@ -7,13 +7,19 @@ from sqlalchemy import engine_from_config, pool
 
 from catallax.config import Settings
 from catallax.db.base import Base
-from catallax.db.models import DataSyncLog, Instrument, InstrumentSymbolMap
+from catallax.db.models import (
+    DailyPrice,
+    DataSyncLog,
+    Instrument,
+    InstrumentSymbolMap,
+)
 
 # Touch model symbols so metadata is fully populated for autogenerate.
 _MODEL_REGISTRY: tuple[type[object], ...] = (
     Instrument,
     InstrumentSymbolMap,
     DataSyncLog,
+    DailyPrice,
 )
 _ = _MODEL_REGISTRY
 
