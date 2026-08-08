@@ -48,6 +48,22 @@ class ProviderDailyBar:
     source: str
 
 
+@dataclass(frozen=True, slots=True)
+class ProviderFundamentalPeriod:
+    """Fiscal-period EPS/BPS before internal instrument_id mapping."""
+
+    provider_symbol: str
+    period_end: date
+    period_label: str
+    fiscal_year: int | None
+    eps: Decimal | None
+    bps: Decimal | None
+    currency: str
+    announcement_date: date | None
+    available_date: date | None
+    source: str
+
+
 @runtime_checkable
 class MarketDataProvider(Protocol):
     """Abstract market-data source. Strategies must never call this layer."""
@@ -87,4 +103,22 @@ class DailyPriceProvider(Protocol):
         end: date,
     ) -> list[ProviderDailyBar]:
         """Daily bars for ``provider_symbol`` in ``[start, end]`` (inclusive)."""
+        ...
+
+
+@runtime_checkable
+class FundamentalProvider(Protocol):
+    """Provider of fiscal-period per-share fundamentals."""
+
+    @property
+    def name(self) -> str:
+        """Stable provider identifier."""
+        ...
+
+    def get_fundamental_periods(
+        self,
+        *,
+        provider_symbol: str,
+    ) -> list[ProviderFundamentalPeriod]:
+        """Return quarterly (or period) EPS/BPS rows for one provider symbol."""
         ...

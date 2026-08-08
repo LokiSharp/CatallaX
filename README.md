@@ -6,7 +6,7 @@ License: [MIT](LICENSE)
 
 ## 当前状态
 
-**M1：已关闭** · **M2：自算 PE/PB 为主，长桥仅验证**
+**M1：已关闭** · **M2.1a：fundamental_period 已落地** · **自算 PE 仍待 available_date**
 
 ### M1 — 数据地基（已关闭）
 
@@ -30,7 +30,12 @@ License: [MIT](LICENSE)
 | --- | --- |
 | **权威** | 用日线价格 + **带 PIT 的 EPS/BPS** 自算 PE/PB → 未来 `daily_valuation` |
 | **验证** | 长桥 `valuation_history` / `calc_indexes` 等只做对照，不当历史日频 SoT |
-| **阻塞** | 在历史 EPS/BPS（`available_date`）入库前，不写「完整历史日频估值」 |
+| **M2.1a** | 表 `fundamental_period`：季度 EPS/BPS 已从长桥 `financial_report` 同步；`available_date` 上游无则 **NULL** |
+| **阻塞 PE 计算** | 无 `available_date` 时不做历史 PE/PB（防 look-ahead） |
+
+```bash
+devbox run sync-fundamentals -- --symbols AAPL --markets US
+```
 
 ```text
 权威估值 = catallax computed；长桥 = validation only
@@ -95,6 +100,7 @@ GitHub Actions（`.github/workflows/ci.yml`）在 push/PR 到 `main` 时与本�
 | `devbox run sync-instruments` | 经长桥同步 CN/HK/US 标的 |
 | `devbox run sync-daily-prices -- …` | 同步日线（可省略日期=最近 10 天；参数在 `--` 后） |
 | `devbox run list-history-symbols` | 列出本月历史 K 配额账本中的标的 |
+| `devbox run sync-fundamentals -- …` | 同步季度 EPS/BPS → `fundamental_period` |
 | `devbox run test` | 运行 pytest |
 | `devbox run lint` | Ruff check |
 | `devbox run format` | Ruff format |

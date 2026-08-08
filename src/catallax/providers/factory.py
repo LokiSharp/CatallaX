@@ -10,7 +10,11 @@ from catallax.config import settings
 from catallax.providers.longbridge.provider import LongbridgeMarketDataProvider
 
 if TYPE_CHECKING:
-    from catallax.providers.base import DailyPriceProvider, MarketDataProvider
+    from catallax.providers.base import (
+        DailyPriceProvider,
+        FundamentalProvider,
+        MarketDataProvider,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +27,11 @@ def build_instrument_provider(name: str | None = None) -> MarketDataProvider:
 def build_price_provider(name: str | None = None) -> DailyPriceProvider:
     """Build provider for daily price sync (Longbridge only)."""
     return _build_longbridge(name, purpose="price")
+
+
+def build_fundamental_provider(name: str | None = None) -> FundamentalProvider:
+    """Build provider for fiscal-period fundamentals (Longbridge only)."""
+    return _build_longbridge(name, purpose="fundamentals")
 
 
 def _build_longbridge(

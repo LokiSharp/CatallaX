@@ -11,6 +11,7 @@ from datetime import date
 from longbridge.openapi import (
     AdjustType,
     Config,
+    FundamentalContext,
     Market,
     Period,
     QuoteContext,
@@ -21,12 +22,17 @@ from longbridge.openapi import (
 from catallax.config import settings
 from catallax.domain.markets import DEFAULT_MARKETS
 from catallax.progress import ProgressLine
-from catallax.providers.base import ProviderDailyBar, ProviderInstrument
+from catallax.providers.base import (
+    ProviderDailyBar,
+    ProviderFundamentalPeriod,
+    ProviderInstrument,
+)
 from catallax.providers.longbridge.bars import (
     DAILY_BAR_SOURCE,
     candlestick_to_bar_fields,
     iter_date_windows,
 )
+from catallax.providers.longbridge.fundamentals import extract_eps_bps_periods
 from catallax.providers.longbridge.symbols import (
     currency_for_market,
     map_longbridge_exchange,
@@ -53,13 +59,15 @@ class SecurityRow:
 
 ListFetcher = Callable[[str], list[SecurityRow]]
 BarsFetcher = Callable[[str, date, date], list[ProviderDailyBar]]
+FundamentalsFetcher = Callable[[str], list[ProviderFundamentalPeriod]]
 
 
 class LongbridgeMarketDataProvider:
-    """Longbridge OpenAPI: security lists + daily history bars.
+    """Longbridge OpenAPI: instruments, daily bars, fiscal-period fundamentals.
 
     Instruments: ``security_list`` + batched ``static_info``.
     Daily bars: ``history_candlesticks_by_date`` with ForwardAdjust / Intraday.
+    Fundamentals: ``FundamentalContext.financial_report`` → EPS/BPS by quarter.
     """
 
     def __init__(
@@ -67,9 +75,11 @@ class LongbridgeMarketDataProvider:
         *,
         list_fetcher: ListFetcher | None = None,
         bars_fetcher: BarsFetcher | None = None,
+        fundamentals_fetcher: FundamentalsFetcher | None = None,
     ) -> None:
         self._list_fetcher = list_fetcher
         self._bars_fetcher = bars_fetcher
+        self._fundamentals_fetcher = fundamentals_fetcher
 
     @property
     def name(self) -> str:
@@ -111,6 +121,17 @@ class LongbridgeMarketDataProvider:
         if self._bars_fetcher is not None:
             return self._bars_fetcher(sym, start, end)
         return _fetch_daily_bars_live(sym, start, end)
+
+    def get_fundamental_periods(
+        self,
+        *,
+        provider_symbol: str,
+    ) -> list[ProviderFundamentalPeriod]:
+        """Quarterly EPS/BPS from ``financial_report`` (PIT dates usually NULL)."""
+        sym = provider_symbol.strip().upper()
+        if self._fundamentals_fetcher is not None:
+            return self._fundamentals_fetcher(sym)
+        return _fetch_fundamentals_live(sym)
 
     def _fetch_market(
         self,
@@ -266,6 +287,15 @@ def _enrich_with_static_info(
                 exchange=str(info.exchange).strip(),
                 currency=str(info.currency).strip(),
             )
+
+
+def _fetch_fundamentals_live(provider_symbol: str) -> list[ProviderFundamentalPeriod]:
+    """Call FundamentalContext.financial_report and parse EPS/BPS."""
+    config = _build_config()
+    ctx = FundamentalContext(config)
+    # Default kind is All (full statements including EPS/BPS lines).
+    report = ctx.financial_report(provider_symbol)
+    return extract_eps_bps_periods(provider_symbol, report.list)
 
 
 def _build_config() -> Config:

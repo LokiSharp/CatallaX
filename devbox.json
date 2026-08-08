@@ -55,6 +55,9 @@
       "list-history-symbols": [
         "uv run python -m catallax.pipeline.list_history_symbols \"$@\""
       ],
+      "sync-fundamentals": [
+        "uv run python -m catallax.pipeline.sync_fundamentals \"$@\""
+      ],
       "test": [
         "uv run pytest \"$@\""
       ],

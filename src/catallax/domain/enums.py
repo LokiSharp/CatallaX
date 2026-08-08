@@ -16,8 +16,8 @@ class SyncEntity(StrEnum):
 
     INSTRUMENTS = "instruments"
     DAILY_PRICES = "daily_prices"
-    VALUATION = "valuation"
     FUNDAMENTALS = "fundamentals"
+    VALUATION = "valuation"
     OTHER = "other"
 
 

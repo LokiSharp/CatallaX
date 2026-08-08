@@ -159,17 +159,29 @@ available_date <= as_of_date
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | M2.0 | 语义：长桥非日频主源；自算为主 | **完成** |
-| M2.1a | 最小基本面：EPS/BPS（或 TTM 点）+ PIT 字段 + 同步 | **未开始** |
-| M2.1b | 自算写入 `daily_valuation`（`source=catallax:computed:…`） | 依赖 2.1a |
-| M2.1c | 长桥 `valuation_history` → 验证（观测表或离线 diff） | 可与 2.1b 并行/稍后 |
+| M2.1a | 最小基本面：EPS/BPS + PIT 字段 + 同步 | **完成（部分）** — 见下 |
+| M2.1b | 自算写入 `daily_valuation`（`source=catallax:computed:…`） | **阻塞** 至 `available_date` 可填充 |
+| M2.1c | 长桥 `valuation_history` → 验证 | 未开始 |
 
-**不要**在 2.1a 完成前实现「完整历史 daily_valuation 同步」。
+### M2.1a 已实现
 
-基本面数据源候选（实现时再选，可组合）：
+- 表 **`fundamental_period`**（migration `0002`）  
+  - PK：`(instrument_id, period_end, source)`  
+  - 字段：`period_label`, `fiscal_year`, `eps`, `bps`, `currency`,  
+    `announcement_date`, `available_date`, `source`  
+- 源：`longbridge:financial_report`（`FundamentalContext.financial_report`）  
+- 解析季度标签 `Q1`–`Q4 YYYY`；合并 IS.EPS 与 BS.BPS  
+- CLI：`devbox run sync-fundamentals -- --symbols AAPL --markets US`  
+- **长桥当前不提供** `announcement_date` / `available_date` → 入库为 **NULL**（禁止瞎填）  
+- `FundamentalPeriodRepository.latest_as_of(..., require_available_date=True)`  
+  **默认只使用 available_date 非空且 `<= as_of` 的行**，避免误用无 PIT 数据算 PE  
 
-- 长桥 `FundamentalContext.financial_report`（若字段与 PIT 够用）  
-- 美股 SEC EDGAR  
-- 其他明示授权的源  
+因此：M2.1a 把「能拿到的历史 EPS/BPS」落库了，但 **PIT 安全的自算 PE/PB 仍须等到 available_date 有可靠来源**（另源补日期，或将来长桥补字段）。
+
+基本面数据源：
+
+- 长桥 `financial_report`：EPS/BPS + `period_end`（**无**可用日）— 已接  
+- 美股 SEC EDGAR 等：可用于补 `available_date` — 未接  
 
 ---
 
