@@ -6,9 +6,11 @@ License: [MIT](LICENSE)
 
 ## Current Status
 
-Milestone 0 / Development Environment
+**Milestone 1.1 — Security Master Schema**
 
-Python **3.14+**, Devbox, uv, and local PostgreSQL. No quant business logic yet.
+Python **3.14+**, Devbox, uv, PostgreSQL. Security Master tables
+(`instrument`, `instrument_symbol_map`, `data_sync_log`) with repositories
+and PostgreSQL integration tests. No market-data sync / AKShare yet.
 
 ## Prerequisites
 
@@ -55,7 +57,7 @@ Toolchain is installed via Devbox so CI matches the local environment.
 | `devbox run precommit` | Lint + format check + typecheck (same as pre-commit hook) |
 | `devbox run db-start` | Start local PostgreSQL on port **15432** |
 | `devbox run db-stop` | Stop local PostgreSQL |
-| `devbox run db-init` | Create `catallax` role and `catallax_dev` (idempotent) |
+| `devbox run db-init` | Create `catallax` role, `catallax_dev`, and `catallax_test` (idempotent) |
 | `devbox run db-reset` | Drop + recreate `catallax_dev`, then migrate (local only) |
 | `devbox run db-check` | Smoke-test app → PostgreSQL connectivity |
 | `devbox run migrate` | Run Alembic migrations |

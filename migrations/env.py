@@ -5,18 +5,26 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from catallax.config import settings
+from catallax.config import Settings
 from catallax.db.base import Base
+from catallax.db.models import DataSyncLog, Instrument, InstrumentSymbolMap
+
+# Touch model symbols so metadata is fully populated for autogenerate.
+_MODEL_REGISTRY: tuple[type[object], ...] = (
+    Instrument,
+    InstrumentSymbolMap,
+    DataSyncLog,
+)
+_ = _MODEL_REGISTRY
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Never hardcode credentials in alembic.ini; always take URL from app settings.
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Fresh Settings() so CATALLAX_DATABASE_URL overrides work (e.g. integration tests).
+config.set_main_option("sqlalchemy.url", Settings().database_url)
 
-# Future ORM models should inherit from Base so autogenerate can see them.
 target_metadata = Base.metadata
 
 

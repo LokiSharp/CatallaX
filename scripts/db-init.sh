@@ -6,6 +6,7 @@ set -euo pipefail
 DB_USER="${CATALLAX_DB_USER:-catallax}"
 DB_PASSWORD="${CATALLAX_DB_PASSWORD:-catallax}"
 DB_NAME="${CATALLAX_DB_NAME:-catallax_dev}"
+DB_TEST_NAME="${CATALLAX_DB_TEST_NAME:-catallax_test}"
 PG_HOST="${CATALLAX_PG_HOST:-localhost}"
 PG_PORT="${PGPORT:-15432}"
 
@@ -43,26 +44,30 @@ else
   echo "Role ${DB_USER} already exists (password refreshed)."
 fi
 
-echo "Ensuring database '${DB_NAME}' exists ..."
-db_exists="$(
-  psql_admin postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '${DB_NAME}'" | tr -d '[:space:]'
-)"
-if [[ "$db_exists" != "1" ]]; then
+ensure_database() {
+  local name="$1"
+  local exists
+  exists="$(
+    psql_admin postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '${name}'" | tr -d '[:space:]'
+  )"
+  if [[ "$exists" != "1" ]]; then
+    psql_admin postgres -v ON_ERROR_STOP=1 -c \
+      "CREATE DATABASE ${name} OWNER ${DB_USER}"
+    echo "Created database ${name}."
+  else
+    echo "Database ${name} already exists (left unchanged)."
+  fi
   psql_admin postgres -v ON_ERROR_STOP=1 -c \
-    "CREATE DATABASE ${DB_NAME} OWNER ${DB_USER}"
-  echo "Created database ${DB_NAME}."
-else
-  echo "Database ${DB_NAME} already exists (left unchanged)."
-fi
-
-psql_admin postgres -v ON_ERROR_STOP=1 -c \
-  "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER}"
-
-# On PostgreSQL 15+, schema privileges matter for non-superusers.
-psql_admin "$DB_NAME" -v ON_ERROR_STOP=1 <<SQL
+    "GRANT ALL PRIVILEGES ON DATABASE ${name} TO ${DB_USER}"
+  # On PostgreSQL 15+, schema privileges matter for non-superusers.
+  psql_admin "$name" -v ON_ERROR_STOP=1 <<SQL
 GRANT ALL ON SCHEMA public TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${DB_USER};
 SQL
+}
 
-echo "db-init complete: ${DB_USER}@${PG_HOST}:${PG_PORT}/${DB_NAME}"
+ensure_database "$DB_NAME"
+ensure_database "$DB_TEST_NAME"
+
+echo "db-init complete: ${DB_USER}@${PG_HOST}:${PG_PORT}/{${DB_NAME},${DB_TEST_NAME}}"
