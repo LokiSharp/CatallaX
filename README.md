@@ -13,7 +13,7 @@ Security Master + `daily_price` schema, plus **instrument list sync** into
 
 - **Provider:** Longbridge OpenAPI only
 - **Default markets:** `CN,HK,US`
-- Fields: `name_cn` / `name_en`, real `exchange` from `static_info`
+- Fields: `name_cn` / `name_en` / `name_hk`, real `exchange` from `static_info`
 
 Daily price download is **not** implemented yet (Milestone 1.4).
 

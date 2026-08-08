@@ -31,6 +31,7 @@ class InstrumentRepository:
         currency: str,
         asset_type: str,
         name_en: str = "",
+        name_hk: str = "",
         list_date: date | None = None,
         delist_date: date | None = None,
         status: str = "active",
@@ -40,6 +41,7 @@ class InstrumentRepository:
             symbol=symbol,
             name_cn=name_cn,
             name_en=name_en,
+            name_hk=name_hk,
             market=market,
             exchange=exchange,
             currency=currency,
@@ -86,6 +88,7 @@ class InstrumentRepository:
         *,
         name_cn: str | None = None,
         name_en: str | None = None,
+        name_hk: str | None = None,
         exchange: str | None = None,
         currency: str | None = None,
         asset_type: str | None = None,
@@ -95,24 +98,23 @@ class InstrumentRepository:
         clear_delist_date: bool = False,
     ) -> Instrument:
         """Mutate mutable fields on an already-attached instrument."""
-        if name_cn is not None:
-            instrument.name_cn = name_cn
-        if name_en is not None:
-            instrument.name_en = name_en
-        if exchange is not None:
-            instrument.exchange = exchange
-        if currency is not None:
-            instrument.currency = currency
-        if asset_type is not None:
-            instrument.asset_type = asset_type
-        if list_date is not None:
-            instrument.list_date = list_date
+        fields: dict[str, object] = {
+            "name_cn": name_cn,
+            "name_en": name_en,
+            "name_hk": name_hk,
+            "exchange": exchange,
+            "currency": currency,
+            "asset_type": asset_type,
+            "list_date": list_date,
+            "status": status,
+        }
+        for attr, value in fields.items():
+            if value is not None:
+                setattr(instrument, attr, value)
         if clear_delist_date:
             instrument.delist_date = None
         elif delist_date is not None:
             instrument.delist_date = delist_date
-        if status is not None:
-            instrument.status = status
         self._session.flush()
         return instrument
 
@@ -126,6 +128,7 @@ class InstrumentRepository:
         currency: str,
         asset_type: str,
         name_en: str = "",
+        name_hk: str = "",
         list_date: date | None = None,
         delist_date: date | None = None,
         status: str = "active",
@@ -137,6 +140,7 @@ class InstrumentRepository:
                 symbol=symbol,
                 name_cn=name_cn,
                 name_en=name_en,
+                name_hk=name_hk,
                 market=market,
                 exchange=exchange,
                 currency=currency,
@@ -150,6 +154,7 @@ class InstrumentRepository:
                 set_={
                     "name_cn": name_cn,
                     "name_en": name_en,
+                    "name_hk": name_hk,
                     "exchange": exchange,
                     "currency": currency,
                     "asset_type": asset_type,

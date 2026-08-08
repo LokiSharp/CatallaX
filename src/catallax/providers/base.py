@@ -23,6 +23,7 @@ class ProviderInstrument:
     provider_exchange: str
     name_cn: str
     name_en: str
+    name_hk: str
     market: str
     # CatallaX-normalized exchange code (SSE/SZSE/NASDAQ/NYSE/...) when known.
     exchange: str

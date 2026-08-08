@@ -44,16 +44,23 @@ def test_longbridge_provider_from_injected_list() -> None:
     def fetch(market: str) -> list[SecurityRow]:
         if market == "US":
             return [
-                SecurityRow("AAPL.US", "苹果", "Apple Inc.", "NASD", "USD"),
-                SecurityRow("BRK.B.US", "伯克希尔B", "Berkshire B", "NYSE", "USD"),
+                SecurityRow("AAPL.US", "苹果", "Apple Inc.", "", "NASD", "USD"),
+                SecurityRow("BRK.B.US", "伯克希尔B", "Berkshire B", "", "NYSE", "USD"),
             ]
         if market == "CN":
             return [
-                SecurityRow("600519.SH", "贵州茅台", "Kweichow Moutai", "SHSE", "CNY"),
+                SecurityRow(
+                    "600519.SH",
+                    "贵州茅台",
+                    "Kweichow Moutai",
+                    "",
+                    "SHSE",
+                    "CNY",
+                ),
             ]
         if market == "HK":
             return [
-                SecurityRow("700.HK", "腾讯控股", "TENCENT", "SEHK", "HKD"),
+                SecurityRow("700.HK", "腾讯控股", "TENCENT", "騰訊控股", "SEHK", "HKD"),
             ]
         return []
 
@@ -83,4 +90,5 @@ def test_longbridge_provider_from_injected_list() -> None:
     assert tencent.currency == "HKD"
     assert tencent.name_cn == "腾讯控股"
     assert tencent.name_en == "TENCENT"
+    assert tencent.name_hk == "騰訊控股"
     assert tencent.provider_symbol == "700.HK"

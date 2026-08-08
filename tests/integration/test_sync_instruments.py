@@ -48,6 +48,7 @@ def _sample_items() -> list[ProviderInstrument]:
             provider_exchange="SH",
             name_cn="贵州茅台",
             name_en="Kweichow Moutai",
+            name_hk="",
             market=Market.CN.value,
             exchange="SSE",
             currency="CNY",
@@ -60,11 +61,25 @@ def _sample_items() -> list[ProviderInstrument]:
             provider_exchange="NASDAQ",
             name_cn="苹果",
             name_en="Apple Inc.",
+            name_hk="",
             market=Market.US.value,
             exchange="NASDAQ",
             currency="USD",
             asset_type=AssetType.EQUITY.value,
             symbol="AAPL",
+        ),
+        ProviderInstrument(
+            provider="fake",
+            provider_symbol="700.HK",
+            provider_exchange="SEHK",
+            name_cn="腾讯控股",
+            name_en="TENCENT",
+            name_hk="騰訊控股",
+            market=Market.HK.value,
+            exchange="SEHK",
+            currency="HKD",
+            asset_type=AssetType.EQUITY.value,
+            symbol="700",
         ),
     ]
 
@@ -76,12 +91,13 @@ def test_sync_instruments_idempotent(db_session: Session) -> None:
     second = sync_instruments(provider=provider, session=db_session)
     db_session.flush()
 
-    assert first == 2
-    assert second == 2
+    assert first == 3
+    assert second == 3
 
     instruments = InstrumentRepository(db_session)
     assert len(instruments.list_by_market(Market.CN.value)) == 1
     assert len(instruments.list_by_market(Market.US.value)) == 1
+    assert len(instruments.list_by_market(Market.HK.value)) == 1
 
     moutai = instruments.get_by_business_key(
         market=Market.CN.value,
@@ -94,6 +110,10 @@ def test_sync_instruments_idempotent(db_session: Session) -> None:
     assert aapl is not None
     assert aapl.exchange == "NASDAQ"
     assert aapl.name_en == "Apple Inc."
+    tencent = instruments.get_by_business_key(market=Market.HK.value, symbol="700")
+    assert tencent is not None
+    assert tencent.name_hk == "騰訊控股"
+    assert tencent.exchange == "SEHK"
     maps = InstrumentSymbolMapRepository(db_session).list_by_instrument(moutai.id)
     assert len(maps) == 1
     assert maps[0].provider == "fake"
@@ -105,7 +125,7 @@ def test_sync_instruments_idempotent(db_session: Session) -> None:
     )
     assert log is not None
     assert log.status == SyncStatus.SUCCESS.value
-    assert log.records_written == 2
+    assert log.records_written == 3
 
 
 def test_sync_instruments_updates_name_on_rerun(db_session: Session) -> None:
@@ -119,6 +139,7 @@ def test_sync_instruments_updates_name_on_rerun(db_session: Session) -> None:
             provider_exchange="SH",
             name_cn="茅台股份",
             name_en="Kweichow Moutai Co",
+            name_hk="",
             market=Market.CN.value,
             exchange="SSE",
             currency="CNY",

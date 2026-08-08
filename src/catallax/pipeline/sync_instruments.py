@@ -39,6 +39,7 @@ def persist_provider_instruments(
             symbol=symbol,
             name_cn=item.name_cn,
             name_en=item.name_en,
+            name_hk=item.name_hk,
             market=item.market,
             exchange=item.exchange,
             currency=item.currency,

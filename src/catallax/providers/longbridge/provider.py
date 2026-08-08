@@ -31,6 +31,7 @@ class SecurityRow:
     symbol: str
     name_cn: str
     name_en: str
+    name_hk: str
     exchange: str
     currency: str
 
@@ -42,7 +43,7 @@ class LongbridgeMarketDataProvider:
     """Fetch security lists from Longbridge OpenAPI.
 
     Uses ``security_list`` for coverage, then ``static_info`` (batched) for
-    real exchange codes and bilingual names when available.
+    real exchange codes and multilingual names when available.
     """
 
     def __init__(
@@ -62,7 +63,6 @@ class LongbridgeMarketDataProvider:
         markets: Sequence[str] | None = None,
     ) -> list[ProviderInstrument]:
         wanted = {m.upper() for m in markets} if markets else set(DEFAULT_MARKETS)
-        # Preserve a stable fetch order.
         lb_markets = [m for m in ("CN", "HK", "US") if m in wanted]
 
         out: list[ProviderInstrument] = []
@@ -84,8 +84,9 @@ class LongbridgeMarketDataProvider:
 def _to_provider_instrument(row: SecurityRow) -> ProviderInstrument:
     market, region_hint, bare = parse_longbridge_symbol(row.symbol)
     exchange = map_longbridge_exchange(row.exchange, region_hint=region_hint)
-    name_cn = row.name_cn.strip() or row.name_en.strip() or bare
+    name_cn = row.name_cn.strip() or row.name_en.strip() or row.name_hk.strip() or bare
     name_en = row.name_en.strip()
+    name_hk = row.name_hk.strip()
     currency = row.currency.strip().upper() or currency_for_market(market)
     return ProviderInstrument(
         provider=PROVIDER_NAME,
@@ -93,6 +94,7 @@ def _to_provider_instrument(row: SecurityRow) -> ProviderInstrument:
         provider_exchange=exchange,
         name_cn=name_cn,
         name_en=name_en,
+        name_hk=name_hk,
         market=market,
         exchange=exchange,
         currency=currency,
@@ -121,14 +123,11 @@ def _fetch_security_list_live(market: str) -> list[SecurityRow]:
         sym = str(sec.symbol).strip()
         if not sym:
             continue
-        name_cn = str(sec.name_cn).strip()
-        name_en = str(sec.name_en).strip()
-        if not name_en:
-            name_en = str(sec.name_hk).strip()
         base[sym.upper()] = SecurityRow(
             symbol=sym,
-            name_cn=name_cn,
-            name_en=name_en,
+            name_cn=str(sec.name_cn).strip(),
+            name_en=str(sec.name_en).strip(),
+            name_hk=str(sec.name_hk).strip(),
             exchange="",
             currency="",
         )
@@ -149,16 +148,13 @@ def _fetch_security_list_live(market: str) -> list[SecurityRow]:
             if sym not in base:
                 continue
             prev = base[sym]
-            name_cn = str(info.name_cn).strip() or prev.name_cn
-            name_en = str(info.name_en).strip() or prev.name_en
-            exchange = str(info.exchange).strip()
-            currency = str(info.currency).strip()
             base[sym] = SecurityRow(
                 symbol=prev.symbol,
-                name_cn=name_cn,
-                name_en=name_en,
-                exchange=exchange,
-                currency=currency,
+                name_cn=str(info.name_cn).strip() or prev.name_cn,
+                name_en=str(info.name_en).strip() or prev.name_en,
+                name_hk=str(info.name_hk).strip() or prev.name_hk,
+                exchange=str(info.exchange).strip(),
+                currency=str(info.currency).strip(),
             )
 
     return list(base.values())

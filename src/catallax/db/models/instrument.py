@@ -45,6 +45,11 @@ class Instrument(Base):
         nullable=False,
         server_default=text("''"),
     )
+    name_hk: Mapped[str] = mapped_column(
+        String(256),
+        nullable=False,
+        server_default=text("''"),
+    )
     market: Mapped[str] = mapped_column(String(8), nullable=False)
     exchange: Mapped[str] = mapped_column(String(32), nullable=False)
     currency: Mapped[str] = mapped_column(String(8), nullable=False)
