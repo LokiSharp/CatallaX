@@ -6,11 +6,11 @@ License: [MIT](LICENSE)
 
 ## Current Status
 
-**Milestone 1.2 — Daily Price Schema**
+**Milestone 1.3 — AKShare Instrument Provider**
 
-Python **3.14+**, Devbox, uv, PostgreSQL. Security Master plus `daily_price`
-(OHLCV, natural key `(instrument_id, trade_date)`, upsert, market/day queries).
-No market-data sync / AKShare yet (starts at Milestone 1.3).
+Security Master + `daily_price` schema, plus **instrument list sync** from
+AKShare (CN/US) into `instrument` / `instrument_symbol_map` (idempotent).
+Daily price download is **not** implemented yet (Milestone 1.4).
 
 ## Prerequisites
 
@@ -61,6 +61,7 @@ Toolchain is installed via Devbox so CI matches the local environment.
 | `devbox run db-reset` | Drop + recreate `catallax_dev`, then migrate (local only) |
 | `devbox run db-check` | Smoke-test app → PostgreSQL connectivity |
 | `devbox run migrate` | Run Alembic migrations |
+| `devbox run sync-instruments` | Sync CN/US instrument master from AKShare |
 | `devbox run test` | Run pytest |
 | `devbox run lint` | Ruff check |
 | `devbox run format` | Ruff format |

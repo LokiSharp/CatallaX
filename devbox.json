@@ -46,6 +46,9 @@
       "migrate": [
         "uv run alembic upgrade head"
       ],
+      "sync-instruments": [
+        "uv run python -m catallax.pipeline.sync_instruments"
+      ],
       "test": [
         "uv run pytest"
       ],
