@@ -6,16 +6,16 @@ License: [MIT](LICENSE)
 
 ## Current Status
 
-**Milestone 1.3+ — Instrument sync (Longbridge only)**
+**Milestone 1.4 — Daily price sync (Longbridge)**
 
-Security Master + `daily_price` schema, plus **instrument list sync** into
-`instrument` / `instrument_symbol_map` (idempotent).
+Security Master + instrument sync + **daily OHLCV** into `daily_price` (idempotent).
 
-- **Provider:** Longbridge OpenAPI only
-- **Default markets:** `CN,HK,US`
-- Fields: `symbol`, `market`, `exchange`, names, `currency`, `status` (from provider data only — no invented `asset_type`)
-
-Daily price download is **not** implemented yet (Milestone 1.4).
+- **Provider:** Longbridge OpenAPI only (`Period.Day`, **ForwardAdjust**, Intraday)
+- **Default instrument markets:** `CN,HK,US`
+- **Bar `source`:** `longbridge:forward` (adjust policy encoded here; no inventing fields)
+- **History quota:** Longbridge counts unique symbols per calendar month. We keep a
+  local ledger `provider_history_symbol` and `devbox run list-history-symbols`
+  (estimate only; no official remaining-quota API).
 
 ## Prerequisites
 
@@ -74,6 +74,8 @@ Toolchain is installed via Devbox so CI matches the local environment.
 | `devbox run db-check` | Smoke-test app → PostgreSQL connectivity |
 | `devbox run migrate` | Run Alembic migrations |
 | `devbox run sync-instruments` | Sync CN/HK/US instruments via Longbridge |
+| `devbox run sync-daily-prices -- --start … --end …` | Sync daily bars (`--start` / `--end` required; args after `--`) |
+| `devbox run list-history-symbols` | List symbols recorded in this month's history-K ledger |
 | `devbox run test` | Run pytest |
 | `devbox run lint` | Ruff check |
 | `devbox run format` | Ruff format |

@@ -1,4 +1,4 @@
-"""Provider protocol and normalized instrument DTO."""
+"""Provider protocol and normalized instrument / bar DTOs."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from datetime import date
+    from decimal import Decimal
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,13 +34,28 @@ class ProviderInstrument:
     symbol: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ProviderDailyBar:
+    """One daily OHLCV bar from a provider before internal instrument_id mapping."""
+
+    provider_symbol: str
+    trade_date: date
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: Decimal
+    amount: Decimal | None
+    source: str
+
+
 @runtime_checkable
 class MarketDataProvider(Protocol):
     """Abstract market-data source. Strategies must never call this layer."""
 
     @property
     def name(self) -> str:
-        """Stable provider identifier (e.g. ``akshare``)."""
+        """Stable provider identifier (e.g. ``longbridge``)."""
         ...
 
     def get_instruments(
@@ -51,4 +68,24 @@ class MarketDataProvider(Protocol):
         ``markets`` uses CatallaX market codes (``CN``, ``US``, ``HK``).
         ``None`` means the provider default set.
         """
+        ...
+
+
+@runtime_checkable
+class DailyPriceProvider(Protocol):
+    """Provider that can fetch daily bars. Strategies must never call this."""
+
+    @property
+    def name(self) -> str:
+        """Stable provider identifier."""
+        ...
+
+    def get_daily_bars(
+        self,
+        *,
+        provider_symbol: str,
+        start: date,
+        end: date,
+    ) -> list[ProviderDailyBar]:
+        """Daily bars for ``provider_symbol`` in ``[start, end]`` (inclusive)."""
         ...

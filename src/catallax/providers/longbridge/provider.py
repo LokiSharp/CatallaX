@@ -1,18 +1,32 @@
-"""Longbridge OpenAPI implementation of MarketDataProvider (instruments)."""
+"""Longbridge OpenAPI market-data provider (instruments + daily bars)."""
 
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import date
 
-from longbridge.openapi import Config, Market, QuoteContext, Security
+from longbridge.openapi import (
+    AdjustType,
+    Config,
+    Market,
+    Period,
+    QuoteContext,
+    Security,
+    TradeSessions,
+)
 
 from catallax.config import settings
 from catallax.domain.enums import InstrumentStatus
 from catallax.domain.markets import DEFAULT_MARKETS
 from catallax.progress import ProgressLine
-from catallax.providers.base import ProviderInstrument
+from catallax.providers.base import ProviderDailyBar, ProviderInstrument
+from catallax.providers.longbridge.bars import (
+    DAILY_BAR_SOURCE,
+    candlestick_to_bar_fields,
+    iter_date_windows,
+)
 from catallax.providers.longbridge.symbols import (
     currency_for_market,
     map_longbridge_exchange,
@@ -38,21 +52,24 @@ class SecurityRow:
 
 
 ListFetcher = Callable[[str], list[SecurityRow]]
+BarsFetcher = Callable[[str, date, date], list[ProviderDailyBar]]
 
 
 class LongbridgeMarketDataProvider:
-    """Fetch security lists from Longbridge OpenAPI.
+    """Longbridge OpenAPI: security lists + daily history bars.
 
-    Uses ``security_list`` for coverage, then ``static_info`` (batched) for
-    real exchange codes and multilingual names when available.
+    Instruments: ``security_list`` + batched ``static_info``.
+    Daily bars: ``history_candlesticks_by_date`` with ForwardAdjust / Intraday.
     """
 
     def __init__(
         self,
         *,
         list_fetcher: ListFetcher | None = None,
+        bars_fetcher: BarsFetcher | None = None,
     ) -> None:
         self._list_fetcher = list_fetcher
+        self._bars_fetcher = bars_fetcher
 
     @property
     def name(self) -> str:
@@ -79,6 +96,22 @@ class LongbridgeMarketDataProvider:
         progress.finish(f"fetched {len(out)} instruments ({markets_label})")
         return out
 
+    def get_daily_bars(
+        self,
+        *,
+        provider_symbol: str,
+        start: date,
+        end: date,
+    ) -> list[ProviderDailyBar]:
+        """Daily OHLCV for one Longbridge symbol over ``[start, end]`` inclusive."""
+        if end < start:
+            msg = f"end {end} is before start {start}"
+            raise ValueError(msg)
+        sym = provider_symbol.strip().upper()
+        if self._bars_fetcher is not None:
+            return self._bars_fetcher(sym, start, end)
+        return _fetch_daily_bars_live(sym, start, end)
+
     def _fetch_market(
         self,
         market: str,
@@ -88,6 +121,45 @@ class LongbridgeMarketDataProvider:
         if self._list_fetcher is not None:
             return self._list_fetcher(market)
         return _fetch_security_list_live(market, progress=progress)
+
+
+def _fetch_daily_bars_live(
+    provider_symbol: str,
+    start: date,
+    end: date,
+) -> list[ProviderDailyBar]:
+    """Call Longbridge history candlesticks (windowed) and map to DTOs."""
+    config = _build_config()
+    ctx = QuoteContext(config)
+    by_date: dict[date, ProviderDailyBar] = {}
+    for win_start, win_end in iter_date_windows(start, end):
+        candles = ctx.history_candlesticks_by_date(
+            provider_symbol,
+            Period.Day,
+            AdjustType.ForwardAdjust,
+            win_start,
+            win_end,
+            TradeSessions.Intraday,
+        )
+        for candle in candles:
+            trade_date, o, h, low, c, vol, amount = candlestick_to_bar_fields(
+                candle,
+                provider_symbol=provider_symbol,
+            )
+            if trade_date < start or trade_date > end:
+                continue
+            by_date[trade_date] = ProviderDailyBar(
+                provider_symbol=provider_symbol,
+                trade_date=trade_date,
+                open=o,
+                high=h,
+                low=low,
+                close=c,
+                volume=vol,
+                amount=amount,
+                source=DAILY_BAR_SOURCE,
+            )
+    return [by_date[d] for d in sorted(by_date)]
 
 
 def _to_provider_instrument(row: SecurityRow) -> ProviderInstrument:

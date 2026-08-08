@@ -18,6 +18,9 @@ Core rules:
 12. Point-in-time correctness and survivorship bias will be critical future requirements.
 13. Do not implement HFT or intraday architecture.
 14. Database schema changes must use Alembic migrations.
+    During active development, prefer **new incremental migrations** (0002, 0003, …)
+    over editing or re-squashing the baseline. Squash/merge migration history only
+    when the user explicitly asks.
 15. Critical database behavior must eventually have PostgreSQL integration tests.
 16. Do not implement future milestones unless explicitly requested.
 17. Git hooks live in `.githooks/` (`core.hooksPath`, configured by `devbox run setup`):

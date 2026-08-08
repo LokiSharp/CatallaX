@@ -10,16 +10,29 @@ from catallax.config import settings
 from catallax.providers.longbridge.provider import LongbridgeMarketDataProvider
 
 if TYPE_CHECKING:
-    from catallax.providers.base import MarketDataProvider
+    from catallax.providers.base import DailyPriceProvider, MarketDataProvider
 
 logger = logging.getLogger(__name__)
 
 
 def build_instrument_provider(name: str | None = None) -> MarketDataProvider:
     """Build provider for instrument sync (Longbridge only)."""
+    return _build_longbridge(name, purpose="instrument")
+
+
+def build_price_provider(name: str | None = None) -> DailyPriceProvider:
+    """Build provider for daily price sync (Longbridge only)."""
+    return _build_longbridge(name, purpose="price")
+
+
+def _build_longbridge(
+    name: str | None,
+    *,
+    purpose: str,
+) -> LongbridgeMarketDataProvider:
     choice = (name or settings.market_data_provider).strip().lower()
     if choice in {"longbridge", "lb", "auto", "default", ""}:
-        logger.info("using instrument provider: longbridge")
+        logger.info("using %s provider: longbridge", purpose)
         return LongbridgeMarketDataProvider()
     msg = f"unknown market_data_provider={choice!r}; only 'longbridge' is supported"
     raise ValueError(msg)

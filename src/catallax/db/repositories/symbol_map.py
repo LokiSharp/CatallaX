@@ -7,9 +7,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
-from catallax.db.models.instrument import InstrumentSymbolMap
+from catallax.db.models.instrument import Instrument, InstrumentSymbolMap
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy.orm import Session
 
 
@@ -66,6 +68,38 @@ class InstrumentSymbolMapRepository:
             .where(InstrumentSymbolMap.instrument_id == instrument_id)
             .order_by(InstrumentSymbolMap.provider, InstrumentSymbolMap.provider_symbol)
         )
+        return list(self._session.scalars(stmt).all())
+
+    def list_active_by_provider(
+        self,
+        *,
+        provider: str,
+        markets: Sequence[str] | None = None,
+        symbols: Sequence[str] | None = None,
+        limit: int | None = None,
+    ) -> list[InstrumentSymbolMap]:
+        """Active mappings for a provider, optional market / bare-symbol filters.
+
+        ``symbols`` matches ``instrument.symbol`` (canonical bare code), not
+        provider_symbol.
+        """
+        stmt = (
+            select(InstrumentSymbolMap)
+            .join(Instrument, Instrument.id == InstrumentSymbolMap.instrument_id)
+            .where(
+                InstrumentSymbolMap.provider == provider,
+                InstrumentSymbolMap.is_active.is_(True),
+            )
+            .order_by(Instrument.market, Instrument.symbol)
+        )
+        if markets:
+            wanted_m = {m.upper() for m in markets}
+            stmt = stmt.where(Instrument.market.in_(wanted_m))
+        if symbols:
+            wanted_s = {s.strip().upper() for s in symbols if s.strip()}
+            stmt = stmt.where(Instrument.symbol.in_(wanted_s))
+        if limit is not None:
+            stmt = stmt.limit(limit)
         return list(self._session.scalars(stmt).all())
 
     def upsert(

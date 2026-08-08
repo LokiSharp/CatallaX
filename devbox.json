@@ -47,10 +47,16 @@
         "uv run alembic upgrade head"
       ],
       "sync-instruments": [
-        "uv run python -m catallax.pipeline.sync_instruments"
+        "uv run python -m catallax.pipeline.sync_instruments \"$@\""
+      ],
+      "sync-daily-prices": [
+        "uv run python -m catallax.pipeline.sync_daily_prices \"$@\""
+      ],
+      "list-history-symbols": [
+        "uv run python -m catallax.pipeline.list_history_symbols \"$@\""
       ],
       "test": [
-        "uv run pytest"
+        "uv run pytest \"$@\""
       ],
       "lint": [
         "ruff check ."

@@ -5,7 +5,8 @@ Revises:
 Create Date: 2026-08-09
 
 Single baseline for current CatallaX tables:
-instrument, instrument_symbol_map, data_sync_log, daily_price.
+instrument, instrument_symbol_map, data_sync_log, daily_price,
+provider_history_symbol.
 """
 
 from __future__ import annotations
@@ -210,9 +211,73 @@ def upgrade() -> None:
         unique=False,
     )
 
+    # Local ledger of symbols that have requested history K-lines this month
+    # (Longbridge monthly unique-symbol quota; official list API not available).
+    op.create_table(
+        "provider_history_symbol",
+        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("provider", sa.String(length=64), nullable=False),
+        sa.Column("provider_symbol", sa.String(length=64), nullable=False),
+        sa.Column("year_month", sa.String(length=7), nullable=False),
+        sa.Column("instrument_id", sa.BigInteger(), nullable=True),
+        sa.Column(
+            "first_queried_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "last_queried_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "query_count",
+            sa.Integer(),
+            server_default=sa.text("1"),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ["instrument_id"],
+            ["instrument.id"],
+            ondelete="SET NULL",
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint(
+            "provider",
+            "provider_symbol",
+            "year_month",
+            name="uq_provider_history_symbol_month",
+        ),
+    )
+    op.create_index(
+        "ix_provider_history_provider_month",
+        "provider_history_symbol",
+        ["provider", "year_month"],
+        unique=False,
+    )
+
 
 def downgrade() -> None:
     """Drop all tables from the baseline schema."""
+    op.drop_index(
+        "ix_provider_history_provider_month",
+        table_name="provider_history_symbol",
+    )
+    op.drop_table("provider_history_symbol")
     op.drop_index(
         "ix_daily_price_trade_date_instrument",
         table_name="daily_price",
