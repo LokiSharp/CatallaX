@@ -12,7 +12,7 @@ from catallax.db.repositories.symbol_map import InstrumentSymbolMapRepository
 from catallax.db.repositories.sync_log import DataSyncLogRepository
 from catallax.db.session import get_engine, session_scope
 from catallax.domain.enums import SyncEntity
-from catallax.providers.akshare.provider import AkshareMarketDataProvider
+from catallax.providers.factory import build_instrument_provider
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -78,6 +78,8 @@ def sync_instruments(
         try:
             items = provider.get_instruments(markets=markets)
             count = persist_provider_instruments(active, items)
+            # After fallback, provider.name may reflect the source that served data.
+            log.provider = provider.name
             logs.mark_success(log, records_written=count)
         except Exception as exc:
             logs.mark_failed(log, error_message=str(exc))
@@ -99,11 +101,18 @@ def sync_instruments(
 
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry: ``uv run python -m catallax.pipeline.sync_instruments``."""
-    parser = argparse.ArgumentParser(description="Sync instrument master from AKShare")
+    parser = argparse.ArgumentParser(
+        description="Sync instrument master (default: Longbridge, AKShare fallback)",
+    )
     parser.add_argument(
         "--markets",
         default="CN,US",
         help="Comma-separated markets (default: CN,US)",
+    )
+    parser.add_argument(
+        "--provider",
+        default=None,
+        help="longbridge | longbridge-only | akshare (default: settings)",
     )
     parser.add_argument(
         "-v",
@@ -117,7 +126,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         format="%(levelname)s %(name)s: %(message)s",
     )
     markets = [m.strip().upper() for m in args.markets.split(",") if m.strip()]
-    provider = AkshareMarketDataProvider()
+    provider = build_instrument_provider(args.provider)
     try:
         count = sync_instruments(provider=provider, markets=markets)
         print(f"sync_instruments complete: {count} rows from {provider.name}")

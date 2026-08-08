@@ -12,6 +12,7 @@ requires-python = ">=3.14"
 dependencies = [
     "akshare>=1.18.83",
     "alembic>=1.19.0",
+    "longbridge>=4.4.3",
     "psycopg[binary]>=3.3.4",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",

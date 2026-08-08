@@ -18,5 +18,15 @@ class Settings(BaseSettings):
     )
     env: str = "development"
 
+    # Market-data provider selection for instrument (and later price) sync.
+    # longbridge = Longbridge primary + AKShare fallback (default)
+    # longbridge-only = Longbridge only
+    # akshare = AKShare only
+    market_data_provider: str = "longbridge"
+
+    longbridge_app_key: str = ""
+    longbridge_app_secret: str = ""
+    longbridge_access_token: str = ""
+
 
 settings = Settings()
