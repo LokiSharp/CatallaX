@@ -26,19 +26,26 @@ class Instrument(Base):
 
     __tablename__ = "instrument"
     __table_args__ = (
+        # Identity is (market, symbol); exchange is descriptive (may be enriched).
         UniqueConstraint(
             "market",
-            "exchange",
             "symbol",
-            name="uq_instrument_market_exchange_symbol",
+            name="uq_instrument_market_symbol",
         ),
         Index("ix_instrument_market_status", "market", "status"),
         Index("ix_instrument_list_delist", "list_date", "delist_date"),
+        Index("ix_instrument_exchange", "exchange"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     symbol: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Local / Chinese display name (from name_cn when available).
     name: Mapped[str] = mapped_column(String(256), nullable=False)
+    name_en: Mapped[str] = mapped_column(
+        String(256),
+        nullable=False,
+        server_default=text("''"),
+    )
     market: Mapped[str] = mapped_column(String(8), nullable=False)
     exchange: Mapped[str] = mapped_column(String(32), nullable=False)
     currency: Mapped[str] = mapped_column(String(8), nullable=False)

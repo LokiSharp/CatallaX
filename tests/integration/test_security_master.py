@@ -70,6 +70,7 @@ def test_instrument_create_and_get(db_session: Session) -> None:
     assert loaded.symbol == "600519"
     assert loaded.market == Market.CN.value
     assert loaded.exchange == "SSE"
+    assert loaded.name_en == ""
 
 
 def test_instrument_business_key_unique(db_session: Session) -> None:

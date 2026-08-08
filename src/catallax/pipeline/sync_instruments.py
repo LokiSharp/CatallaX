@@ -37,6 +37,7 @@ def persist_provider_instruments(
         row = instruments.upsert_by_business_key(
             symbol=symbol,
             name=item.name,
+            name_en=item.name_en,
             market=item.market,
             exchange=item.exchange,
             currency=item.currency,

@@ -7,9 +7,13 @@ from typing import TYPE_CHECKING
 from catallax.domain.enums import Market
 from catallax.providers.base import ProviderInstrument
 from catallax.providers.fallback import FallbackMarketDataProvider
-from catallax.providers.longbridge.provider import LongbridgeMarketDataProvider
+from catallax.providers.longbridge.provider import (
+    LongbridgeMarketDataProvider,
+    SecurityRow,
+)
 from catallax.providers.longbridge.symbols import (
     currency_for_market,
+    map_longbridge_exchange,
     parse_longbridge_symbol,
 )
 
@@ -21,9 +25,20 @@ def test_parse_longbridge_symbol() -> None:
     assert parse_longbridge_symbol("AAPL.US") == ("US", "US", "AAPL")
     assert parse_longbridge_symbol("BRK.B.US") == ("US", "US", "BRK.B")
     assert parse_longbridge_symbol("BRK.A.US") == ("US", "US", "BRK.A")
-    assert parse_longbridge_symbol("600519.SH") == ("CN", "SSE", "600519")
-    assert parse_longbridge_symbol("000001.SZ") == ("CN", "SZSE", "000001")
-    assert parse_longbridge_symbol("700.HK") == ("HK", "SEHK", "700")
+    assert parse_longbridge_symbol("600519.SH") == ("CN", "SH", "600519")
+    assert parse_longbridge_symbol("000001.SZ") == ("CN", "SZ", "000001")
+    assert parse_longbridge_symbol("700.HK") == ("HK", "HK", "700")
+
+
+def test_map_longbridge_exchange() -> None:
+    assert map_longbridge_exchange("NASD") == "NASDAQ"
+    assert map_longbridge_exchange("NYSE") == "NYSE"
+    assert map_longbridge_exchange("SEHK") == "SEHK"
+    assert map_longbridge_exchange("SHSE") == "SSE"
+    assert map_longbridge_exchange("SZSE") == "SZSE"
+    # Region alone is not a venue.
+    assert map_longbridge_exchange("", region_hint="US") == "UNKNOWN"
+    assert map_longbridge_exchange("", region_hint="SH") == "SSE"
 
 
 def test_currency_for_market() -> None:
@@ -33,25 +48,37 @@ def test_currency_for_market() -> None:
 
 
 def test_longbridge_provider_from_injected_list() -> None:
-    def fetch(market: str) -> list[tuple[str, str]]:
+    def fetch(market: str) -> list[SecurityRow]:
         if market == "US":
-            return [("AAPL.US", "Apple"), ("BRK.B.US", "Berkshire B")]
+            return [
+                SecurityRow("AAPL.US", "苹果", "Apple Inc.", "NASD", "USD"),
+                SecurityRow("BRK.B.US", "伯克希尔B", "Berkshire B", "NYSE", "USD"),
+            ]
         if market == "CN":
-            return [("600519.SH", "贵州茅台")]
+            return [
+                SecurityRow("600519.SH", "贵州茅台", "Kweichow Moutai", "SHSE", "CNY"),
+            ]
         return []
 
     provider = LongbridgeMarketDataProvider(list_fetcher=fetch)
     rows = provider.get_instruments(markets=["CN", "US"])
     assert len(rows) == 3
-    symbols = {r.symbol for r in rows}
-    assert symbols == {"AAPL", "BRK.B", "600519"}
+
+    aapl = next(r for r in rows if r.symbol == "AAPL")
+    assert aapl.name == "苹果"
+    assert aapl.name_en == "Apple Inc."
+    assert aapl.exchange == "NASDAQ"
+    assert aapl.provider_symbol == "AAPL.US"
+
     brk = next(r for r in rows if r.symbol == "BRK.B")
-    assert brk.provider_symbol == "BRK.B.US"
-    assert brk.market == Market.US.value
-    assert brk.provider == "longbridge"
+    assert brk.exchange == "NYSE"
+    assert brk.name_en == "Berkshire B"
+
     moutai = next(r for r in rows if r.symbol == "600519")
     assert moutai.exchange == "SSE"
-    assert moutai.currency == "CNY"
+    assert moutai.name == "贵州茅台"
+    assert moutai.name_en == "Kweichow Moutai"
+    assert moutai.market == Market.CN.value
 
 
 def test_fallback_uses_secondary_on_primary_failure() -> None:
@@ -85,9 +112,10 @@ def test_fallback_uses_secondary_on_primary_failure() -> None:
                     provider="secondary",
                     provider_symbol="AAPL",
                     provider_exchange="",
-                    name="Apple",
+                    name="苹果",
+                    name_en="Apple",
                     market="US",
-                    exchange="US",
+                    exchange="NASDAQ",
                     currency="USD",
                     asset_type="equity",
                     symbol="AAPL",
@@ -130,9 +158,10 @@ def test_fallback_uses_secondary_on_empty_primary() -> None:
                     provider="secondary",
                     provider_symbol="MSFT",
                     provider_exchange="",
-                    name="Microsoft",
+                    name="微软",
+                    name_en="Microsoft",
                     market="US",
-                    exchange="US",
+                    exchange="NASDAQ",
                     currency="USD",
                     asset_type="equity",
                     symbol="MSFT",
@@ -142,4 +171,5 @@ def test_fallback_uses_secondary_on_empty_primary() -> None:
     fb = FallbackMarketDataProvider(Empty(), Ok())  # type: ignore[arg-type]
     items = fb.get_instruments()
     assert items[0].symbol == "MSFT"
+    assert items[0].name_en == "Microsoft"
     assert fb.name == "secondary"

@@ -30,6 +30,7 @@ class InstrumentRepository:
         exchange: str,
         currency: str,
         asset_type: str,
+        name_en: str = "",
         list_date: date | None = None,
         delist_date: date | None = None,
         status: str = "active",
@@ -38,6 +39,7 @@ class InstrumentRepository:
         row = Instrument(
             symbol=symbol,
             name=name,
+            name_en=name_en,
             market=market,
             exchange=exchange,
             currency=currency,
@@ -58,13 +60,13 @@ class InstrumentRepository:
         self,
         *,
         market: str,
-        exchange: str,
         symbol: str,
+        exchange: str | None = None,
     ) -> Instrument | None:
-        """Fetch by (market, exchange, symbol) natural key."""
+        """Fetch by (market, symbol). ``exchange`` is ignored (legacy callers)."""
+        _ = exchange
         stmt = select(Instrument).where(
             Instrument.market == market,
-            Instrument.exchange == exchange,
             Instrument.symbol == symbol,
         )
         return self._session.scalars(stmt).one_or_none()
@@ -83,6 +85,8 @@ class InstrumentRepository:
         instrument: Instrument,
         *,
         name: str | None = None,
+        name_en: str | None = None,
+        exchange: str | None = None,
         currency: str | None = None,
         asset_type: str | None = None,
         list_date: date | None = None,
@@ -93,6 +97,10 @@ class InstrumentRepository:
         """Mutate mutable fields on an already-attached instrument."""
         if name is not None:
             instrument.name = name
+        if name_en is not None:
+            instrument.name_en = name_en
+        if exchange is not None:
+            instrument.exchange = exchange
         if currency is not None:
             instrument.currency = currency
         if asset_type is not None:
@@ -117,16 +125,18 @@ class InstrumentRepository:
         exchange: str,
         currency: str,
         asset_type: str,
+        name_en: str = "",
         list_date: date | None = None,
         delist_date: date | None = None,
         status: str = "active",
     ) -> Instrument:
-        """Insert or update by (market, exchange, symbol). Idempotent."""
+        """Insert or update by (market, symbol). Idempotent; exchange is updated."""
         stmt = (
             insert(Instrument)
             .values(
                 symbol=symbol,
                 name=name,
+                name_en=name_en,
                 market=market,
                 exchange=exchange,
                 currency=currency,
@@ -136,9 +146,11 @@ class InstrumentRepository:
                 status=status,
             )
             .on_conflict_do_update(
-                constraint="uq_instrument_market_exchange_symbol",
+                constraint="uq_instrument_market_symbol",
                 set_={
                     "name": name,
+                    "name_en": name_en,
+                    "exchange": exchange,
                     "currency": currency,
                     "asset_type": asset_type,
                     "list_date": list_date,

@@ -47,6 +47,7 @@ def _sample_items() -> list[ProviderInstrument]:
             provider_symbol="600519",
             provider_exchange="SH",
             name="贵州茅台",
+            name_en="Kweichow Moutai",
             market=Market.CN.value,
             exchange="SSE",
             currency="CNY",
@@ -55,11 +56,12 @@ def _sample_items() -> list[ProviderInstrument]:
         ),
         ProviderInstrument(
             provider="fake",
-            provider_symbol="AAPL",
-            provider_exchange="",
-            name="Apple Inc.",
+            provider_symbol="AAPL.US",
+            provider_exchange="NASDAQ",
+            name="苹果",
+            name_en="Apple Inc.",
             market=Market.US.value,
-            exchange="US",
+            exchange="NASDAQ",
             currency="USD",
             asset_type=AssetType.EQUITY.value,
             symbol="AAPL",
@@ -83,10 +85,15 @@ def test_sync_instruments_idempotent(db_session: Session) -> None:
 
     moutai = instruments.get_by_business_key(
         market=Market.CN.value,
-        exchange="SSE",
         symbol="600519",
     )
     assert moutai is not None
+    assert moutai.name == "贵州茅台"
+    assert moutai.name_en == "Kweichow Moutai"
+    aapl = instruments.get_by_business_key(market=Market.US.value, symbol="AAPL")
+    assert aapl is not None
+    assert aapl.exchange == "NASDAQ"
+    assert aapl.name_en == "Apple Inc."
     maps = InstrumentSymbolMapRepository(db_session).list_by_instrument(moutai.id)
     assert len(maps) == 1
     assert maps[0].provider == "fake"
@@ -110,7 +117,8 @@ def test_sync_instruments_updates_name_on_rerun(db_session: Session) -> None:
             provider="fake",
             provider_symbol="600519",
             provider_exchange="SH",
-            name="Kweichow Moutai",
+            name="茅台股份",
+            name_en="Kweichow Moutai Co",
             market=Market.CN.value,
             exchange="SSE",
             currency="CNY",
@@ -127,8 +135,8 @@ def test_sync_instruments_updates_name_on_rerun(db_session: Session) -> None:
 
     row = InstrumentRepository(db_session).get_by_business_key(
         market=Market.CN.value,
-        exchange="SSE",
         symbol="600519",
     )
     assert row is not None
-    assert row.name == "Kweichow Moutai"
+    assert row.name == "茅台股份"
+    assert row.name_en == "Kweichow Moutai Co"

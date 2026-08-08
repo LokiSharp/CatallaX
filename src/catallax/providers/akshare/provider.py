@@ -111,6 +111,7 @@ class AkshareMarketDataProvider:
                     provider_symbol=code,
                     provider_exchange=provider_exchange,
                     name=name or code,
+                    name_en="",
                     market=Market.CN.value,
                     exchange=exchange,
                     currency="CNY",
@@ -153,9 +154,10 @@ class AkshareMarketDataProvider:
                     provider_symbol=symbol,
                     provider_exchange="",
                     name=name or symbol,
+                    name_en=name or symbol,
                     market=Market.US.value,
-                    # List endpoints often omit a reliable exchange field.
-                    exchange="US",
+                    # AKShare list endpoints omit venue; do not fake "US" as exchange.
+                    exchange="UNKNOWN",
                     currency="USD",
                     asset_type=AssetType.EQUITY.value,
                     status=InstrumentStatus.ACTIVE.value,
