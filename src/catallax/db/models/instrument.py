@@ -31,7 +31,7 @@ class Instrument(Base):
             "symbol",
             name="uq_instrument_market_symbol",
         ),
-        Index("ix_instrument_market_status", "market", "status"),
+        Index("ix_instrument_market", "market"),
         Index("ix_instrument_exchange", "exchange"),
     )
 
@@ -51,11 +51,6 @@ class Instrument(Base):
         server_default=text("''"),
     )
     currency: Mapped[str] = mapped_column(String(8), nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(32),
-        nullable=False,
-        server_default=text("'active'"),
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

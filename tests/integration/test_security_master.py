@@ -11,7 +11,6 @@ from catallax.db.repositories.instrument import InstrumentRepository
 from catallax.db.repositories.symbol_map import InstrumentSymbolMapRepository
 from catallax.db.repositories.sync_log import DataSyncLogRepository
 from catallax.domain.enums import (
-    InstrumentStatus,
     Market,
     SyncEntity,
     SyncStatus,
@@ -56,7 +55,6 @@ def test_instrument_create_and_get(db_session: Session) -> None:
         market=Market.CN.value,
         exchange="SSE",
         currency="CNY",
-        status=InstrumentStatus.ACTIVE.value,
     )
     db_session.flush()
 
@@ -118,7 +116,6 @@ def test_instrument_update(db_session: Session) -> None:
     repo.update(
         row,
         name_cn="Microsoft Corporation",
-        status=InstrumentStatus.ACTIVE.value,
     )
     db_session.flush()
     assert repo.get_by_id(row.id) is not None

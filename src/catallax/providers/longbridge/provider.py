@@ -18,7 +18,6 @@ from longbridge.openapi import (
 )
 
 from catallax.config import settings
-from catallax.domain.enums import InstrumentStatus
 from catallax.domain.markets import DEFAULT_MARKETS
 from catallax.progress import ProgressLine
 from catallax.providers.base import ProviderDailyBar, ProviderInstrument
@@ -179,8 +178,6 @@ def _to_provider_instrument(row: SecurityRow) -> ProviderInstrument:
         name_en=name_en,
         name_hk=name_hk,
         currency=currency,
-        # security_list / static_info do not expose lifecycle status.
-        status=InstrumentStatus.ACTIVE.value,
         symbol=bare,
     )
 

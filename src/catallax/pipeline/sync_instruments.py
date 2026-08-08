@@ -51,7 +51,6 @@ def persist_provider_instruments(
             name_en=item.name_en,
             name_hk=item.name_hk,
             currency=item.currency,
-            status=item.status,
         )
         maps.upsert(
             instrument_id=row.id,

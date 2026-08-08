@@ -29,7 +29,6 @@ class ProviderInstrument:
     name_en: str
     name_hk: str
     currency: str
-    status: str = "active"
     # Canonical display symbol stored on instrument.symbol.
     symbol: str | None = None
 

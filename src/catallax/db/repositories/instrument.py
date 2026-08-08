@@ -29,7 +29,6 @@ class InstrumentRepository:
         currency: str,
         name_en: str = "",
         name_hk: str = "",
-        status: str = "active",
     ) -> Instrument:
         """Insert a new instrument row and flush to obtain its id."""
         row = Instrument(
@@ -40,7 +39,6 @@ class InstrumentRepository:
             name_en=name_en,
             name_hk=name_hk,
             currency=currency,
-            status=status,
         )
         self._session.add(row)
         self._session.flush()
@@ -83,7 +81,6 @@ class InstrumentRepository:
         name_hk: str | None = None,
         exchange: str | None = None,
         currency: str | None = None,
-        status: str | None = None,
     ) -> Instrument:
         """Mutate mutable fields on an already-attached instrument."""
         fields: dict[str, object] = {
@@ -92,7 +89,6 @@ class InstrumentRepository:
             "name_hk": name_hk,
             "exchange": exchange,
             "currency": currency,
-            "status": status,
         }
         for attr, value in fields.items():
             if value is not None:
@@ -110,7 +106,6 @@ class InstrumentRepository:
         currency: str,
         name_en: str = "",
         name_hk: str = "",
-        status: str = "active",
     ) -> Instrument:
         """Insert or update by (market, symbol). Idempotent; exchange is updated."""
         stmt = (
@@ -123,7 +118,6 @@ class InstrumentRepository:
                 name_en=name_en,
                 name_hk=name_hk,
                 currency=currency,
-                status=status,
             )
             .on_conflict_do_update(
                 constraint="uq_instrument_market_symbol",
@@ -133,7 +127,6 @@ class InstrumentRepository:
                     "name_hk": name_hk,
                     "exchange": exchange,
                     "currency": currency,
-                    "status": status,
                     "updated_at": func.now(),
                 },
             )

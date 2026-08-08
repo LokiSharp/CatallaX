@@ -48,12 +48,6 @@ def upgrade() -> None:
         ),
         sa.Column("currency", sa.String(length=8), nullable=False),
         sa.Column(
-            "status",
-            sa.String(length=32),
-            server_default=sa.text("'active'"),
-            nullable=False,
-        ),
-        sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.text("now()"),
@@ -68,12 +62,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("market", "symbol", name="uq_instrument_market_symbol"),
     )
-    op.create_index(
-        "ix_instrument_market_status",
-        "instrument",
-        ["market", "status"],
-        unique=False,
-    )
+    op.create_index("ix_instrument_market", "instrument", ["market"], unique=False)
     op.create_index("ix_instrument_exchange", "instrument", ["exchange"], unique=False)
 
     op.create_table(
@@ -293,5 +282,5 @@ def downgrade() -> None:
     op.drop_index("ix_symbol_map_instrument_id", table_name="instrument_symbol_map")
     op.drop_table("instrument_symbol_map")
     op.drop_index("ix_instrument_exchange", table_name="instrument")
-    op.drop_index("ix_instrument_market_status", table_name="instrument")
+    op.drop_index("ix_instrument_market", table_name="instrument")
     op.drop_table("instrument")
